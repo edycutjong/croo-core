@@ -38,12 +38,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/edycutjong/core.git"
+    "url": "git+https://github.com/edycutjong/croo-core.git"
   },
   "bugs": {
-    "url": "https://github.com/edycutjong/core/issues"
+    "url": "https://github.com/edycutjong/croo-core/issues"
   },
-  "homepage": "https://github.com/edycutjong/core#readme",
+  "homepage": "https://github.com/edycutjong/croo-core#readme",
   "license": "MIT",
   "publishConfig": {
     "access": "public"

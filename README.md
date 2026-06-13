@@ -13,7 +13,7 @@
 
   ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
   ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white)
-  [![CI](https://github.com/edycutjong/core/actions/workflows/ci.yml/badge.svg)](https://github.com/edycutjong/core/actions/workflows/ci.yml)
+  [![CI](https://github.com/edycutjong/croo-core/actions/workflows/ci.yml/badge.svg)](https://github.com/edycutjong/croo-core/actions/workflows/ci.yml)
 
 </div>
 
@@ -53,7 +53,7 @@ Developing autonomous agents that securely communicate and transact on-chain req
 - npm
 
 ### Installation
-1. Clone: `git clone https://github.com/edycutjong/core.git`
+1. Clone: `git clone https://github.com/edycutjong/croo-core.git`
 2. Install: `npm install`
 3. Build: `npm run build`
 
