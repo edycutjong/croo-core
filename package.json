@@ -1,6 +1,6 @@
 {
   "name": "@edycutjong/croo-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shared CROO SDK wrapper for the Constellation agent suite",
   "type": "module",
   "main": "dist/index.js",
