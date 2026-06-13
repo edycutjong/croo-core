@@ -165,7 +165,7 @@ describe('runProvider', () => {
     });
 
     await handlerFor(stream, EventType.OrderPaid)({ order_id: 'ord_1' });
-    expect(client.rejectOrder).toHaveBeenCalledWith('ord_1', 'Error: Work error');
+    expect(client.rejectOrder).toHaveBeenCalledWith('ord_1', 'Provider internal error during execution');
   });
 
   it('logs but does not crash when the fallback rejectOrder also fails', async () => {
@@ -183,7 +183,7 @@ describe('runProvider', () => {
     });
 
     await expect(handlerFor(stream, EventType.OrderPaid)({ order_id: 'ord_2' })).resolves.toBeUndefined();
-    expect(client.rejectOrder).toHaveBeenCalledWith('ord_2', 'Error: Work error');
+    expect(client.rejectOrder).toHaveBeenCalledWith('ord_2', 'Provider internal error during execution');
   });
 
   it('swallows acceptNegotiation failures instead of crashing the loop', async () => {

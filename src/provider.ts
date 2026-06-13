@@ -69,7 +69,10 @@ export async function runProvider<TOutput = unknown>(
     } catch (err) {
       console.error(`[provider] Work failed for order ${order.orderId}:`, err);
       try {
-        await client.rejectOrder(order.orderId, String(err));
+        const safeReason = err instanceof Error && err.name === 'CrooSafeError' 
+          ? err.message 
+          : 'Provider internal error during execution';
+        await client.rejectOrder(order.orderId, safeReason);
         console.log(`[provider] Rejected order ${order.orderId} (clean refund)`);
       } catch (rejectErr) {
         console.error(`[provider] Failed to reject order ${order.orderId}:`, rejectErr);

@@ -122,15 +122,26 @@ function waitForEvent(
 ): Promise<Event> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
+      cleanup();
       reject(new Error(`Timeout waiting for ${eventType} after ${timeoutMs}ms`));
     }, timeoutMs);
 
-    stream.on(eventType, (event: Event) => {
+    const handler = (event: Event) => {
       if (predicate(event)) {
         clearTimeout(timer);
+        cleanup();
         resolve(event);
       }
-    });
+    };
+
+    stream.on(eventType, handler);
+
+    function cleanup() {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const s = stream as any;
+      if (typeof s.off === 'function') s.off(eventType, handler);
+      else if (typeof s.removeListener === 'function') s.removeListener(eventType, handler);
+    }
   });
 }
 
