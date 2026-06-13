@@ -19,16 +19,6 @@
 
 ---
 
-## 📸 See it in Action
-
-<div align="center">
-  <img src="docs/readme.png" alt="Core Demo" width="100%">
-</div>
-
-> **The Core SDK Workflow.** Initialize Client → Connect to Web3 Wallet → Establish A2A Connection → Interact with Constellation Suite.
-
----
-
 ## 💡 The Problem & Solution
 Developing autonomous agents that securely communicate and transact on-chain requires massive boilerplate.
 **Croo Core** provides a unified SDK wrapper for the entire Constellation agent suite. It abstracts away the complexity of A2A (Agent-to-Agent) communication, cryptographic signing, and wallet integration, allowing agent developers to focus on specialized logic rather than infrastructure.

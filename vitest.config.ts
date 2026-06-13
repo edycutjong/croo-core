@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    onConsoleLog(log: string, type: 'stdout' | 'stderr'): boolean | void {
+    onConsoleLog(_log: string, _type: 'stdout' | 'stderr'): boolean | void {
       return false;
     },
     include: ['__tests__/**/*.test.ts'],
