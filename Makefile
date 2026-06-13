@@ -1,4 +1,4 @@
-.PHONY: help install dev build start test test-watch test-coverage lint lint-fix typecheck security-scan ci
+.PHONY: help install dev build start test test-watch test-coverage lint lint-fix typecheck security-scan ci bump-patch bump-minor bump-major
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -45,3 +45,12 @@ security-scan: ## Run security audits (npm audit + license check)
 
 ci: ## Run the full CI/CD verification pipeline locally
 	npm run ci
+
+bump-patch: ## Bump version patch (0.0.x)
+	npm version patch
+
+bump-minor: ## Bump version minor (0.x.0)
+	npm version minor
+
+bump-major: ## Bump version major (x.0.0)
+	npm version major
