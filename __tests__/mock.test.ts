@@ -135,6 +135,14 @@ describe('mockHire', () => {
     const result = await mockHire(request);
     expect(result.orderId).toBeDefined();
   });
+
+  it('falls back to the research fixture for an unrecognized serviceId', async () => {
+    const result = await mockHire<{ draft: string }>({
+      serviceId: 'svc_unmatched_xyz',
+      requirement: {},
+    });
+    expect(result.delivery.draft).toContain('Mock research draft');
+  });
 });
 
 describe('resetMockState', () => {
@@ -181,6 +189,18 @@ describe('mockProvider', () => {
     expect(stream).toBeDefined();
     expect(typeof stream.close).toBe('function');
     expect(typeof stream.simulateOrder).toBe('function');
+    expect(() => stream.close()).not.toThrow();
+  });
+
+  it('simulateOrder auto-generates an order id when none is provided', async () => {
+    const workFn = vi.fn().mockResolvedValue({ type: 'text', data: 'x' });
+    const stream = await mockProvider({ serviceMatch: () => true, work: workFn });
+
+    await stream.simulateOrder({}); // no id → falls back to mock_order_<timestamp>
+
+    expect(workFn).toHaveBeenCalledWith(
+      expect.objectContaining({ orderId: expect.stringMatching(/^mock_order_/), status: 'paid' }),
+    );
   });
 
   it('simulateOrder calls the work function', async () => {
@@ -192,11 +212,11 @@ describe('mockProvider', () => {
     };
 
     const stream = await mockProvider(handlers);
-    await stream.simulateOrder({ id: 'test_order_1' });
+    await stream.simulateOrder({ orderId: 'test_order_1' });
 
     expect(workFn).toHaveBeenCalledTimes(1);
     expect(workFn).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'test_order_1', status: 'paid' }),
+      expect.objectContaining({ orderId: 'test_order_1', status: 'paid' }),
     );
   });
 
@@ -210,7 +230,7 @@ describe('mockProvider', () => {
 
     const stream = await mockProvider(handlers);
     // Should not throw
-    await stream.simulateOrder({ id: 'fail_order' });
+    await stream.simulateOrder({ orderId: 'fail_order' });
     expect(workFn).toHaveBeenCalledTimes(1);
   });
 });

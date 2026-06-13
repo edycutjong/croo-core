@@ -1,25 +1,24 @@
 /**
  * croo-core/provider — Reusable provider loop for all agents.
  *
- * Connects a WebSocket, auto-accepts matching negotiations,
- * runs the work function on order_paid, and delivers the result.
- * Includes SLA-safety: rejectOrder fires ~60s before the SLA
- * deadline so the buyer gets a clean refund instead of a stuck escrow.
+ * Connects a WebSocket, auto-accepts matching negotiations, runs the work
+ * function on order_paid, and delivers the result. Includes SLA-safety:
+ * rejectOrder fires ~60s before the SLA deadline so the buyer gets a clean
+ * refund instead of a stuck escrow.
  *
- * Used by: Summon, Litmus, Gauntlet, and Maestro (provider side).
+ * Used by: Summon, Litmus, Gauntlet, Goldilocks, and Maestro (provider side).
  */
 
+import type { AgentClient } from '@croo-network/sdk';
 import type {
   ProviderHandlers,
-  NegotiationEvent,
+  Event,
   Order,
   Deliverable,
+  DeliverOrderRequest,
 } from './types.js';
-import { EventType } from './types.js';
+import { EventType, DeliverableType } from './types.js';
 import { isMockMode, mockProvider } from './mock.js';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AgentClient = any;
 
 /**
  * Start a provider loop that listens for negotiations and processes orders.
@@ -28,9 +27,9 @@ type AgentClient = any;
  * @param handlers - serviceMatch, work, and optional slaGuardMs
  * @returns The WebSocket stream (for graceful shutdown)
  */
-export async function runProvider<TInput = unknown, TOutput = unknown>(
+export async function runProvider<TOutput = unknown>(
   client: AgentClient,
-  handlers: ProviderHandlers<TInput, TOutput>,
+  handlers: ProviderHandlers<TOutput>,
 ) {
   // ── Mock mode: return a fake stream that can be closed ──
   if (isMockMode()) {
@@ -42,8 +41,8 @@ export async function runProvider<TInput = unknown, TOutput = unknown>(
   const stream = await client.connectWebSocket();
 
   // ── Accept matching negotiations ──
-  stream.on(EventType.NegotiationCreated, async (event: NegotiationEvent) => {
-    if (!serviceMatch(event)) return;
+  stream.on(EventType.NegotiationCreated, async (event: Event) => {
+    if (!event.negotiation_id || !serviceMatch(event)) return;
 
     try {
       await client.acceptNegotiation(event.negotiation_id);
@@ -54,24 +53,26 @@ export async function runProvider<TInput = unknown, TOutput = unknown>(
   });
 
   // ── Process paid orders ──
-  stream.on(EventType.OrderPaid, async (event: { order_id: string }) => {
-    const order: Order<TInput> = await client.getOrder(event.order_id);
-    console.log(`[provider] Order paid: ${order.id}, starting work...`);
+  stream.on(EventType.OrderPaid, async (event: Event) => {
+    if (!event.order_id) return;
+
+    const order = await client.getOrder(event.order_id);
+    console.log(`[provider] Order paid: ${order.orderId}, starting work...`);
 
     // SLA safety timer: reject before deadline to trigger clean refund
     const slaTimer = scheduleSlaGuard(client, order, slaGuardMs);
 
     try {
-      const deliverable: Deliverable<TOutput> = await work(order);
-      await client.deliverOrder(order.id, deliverable);
-      console.log(`[provider] Delivered order ${order.id}`);
+      const deliverable = await work(order);
+      await client.deliverOrder(order.orderId, toDeliverRequest(deliverable));
+      console.log(`[provider] Delivered order ${order.orderId}`);
     } catch (err) {
-      console.error(`[provider] Work failed for order ${order.id}:`, err);
+      console.error(`[provider] Work failed for order ${order.orderId}:`, err);
       try {
-        await client.rejectOrder(order.id, String(err));
-        console.log(`[provider] Rejected order ${order.id} (clean refund)`);
+        await client.rejectOrder(order.orderId, String(err));
+        console.log(`[provider] Rejected order ${order.orderId} (clean refund)`);
       } catch (rejectErr) {
-        console.error(`[provider] Failed to reject order ${order.id}:`, rejectErr);
+        console.error(`[provider] Failed to reject order ${order.orderId}:`, rejectErr);
       }
     } finally {
       clearTimeout(slaTimer);
@@ -83,24 +84,37 @@ export async function runProvider<TInput = unknown, TOutput = unknown>(
 }
 
 /**
+ * Map a core `Deliverable` to the SDK's `DeliverOrderRequest`.
+ * `text` -> deliverableText, `schema` -> deliverableSchema (JSON-stringified).
+ */
+function toDeliverRequest(d: Deliverable): DeliverOrderRequest {
+  const payload = typeof d.data === 'string' ? d.data : JSON.stringify(d.data);
+  return d.type === 'schema'
+    ? { deliverableType: DeliverableType.Schema, deliverableSchema: payload }
+    : { deliverableType: DeliverableType.Text, deliverableText: payload };
+}
+
+/**
  * Schedule an automatic rejectOrder before the SLA expires.
- * This ensures the buyer gets a clean refund instead of a stuck escrow.
+ * Ensures the buyer gets a clean refund instead of a stuck escrow.
  */
 function scheduleSlaGuard(
   client: AgentClient,
   order: Order,
   guardMs: number,
 ): NodeJS.Timeout {
-  const slaTotalMs = (order.sla_minutes ?? 15) * 60 * 1000;
-  const paidAt = order.paid_at ? new Date(order.paid_at).getTime() : Date.now();
-  const deadline = paidAt + slaTotalMs;
+  const deadline = order.slaDeadline
+    ? new Date(order.slaDeadline).getTime()
+    : Date.now() + 15 * 60 * 1000; // fall back to 15 min if absent
   const triggerAt = deadline - guardMs;
   const delayMs = Math.max(triggerAt - Date.now(), 1000); // At least 1s
 
   return setTimeout(async () => {
     try {
-      console.warn(`[provider] SLA guard firing for order ${order.id} — rejecting to refund buyer`);
-      await client.rejectOrder(order.id, 'SLA guard: approaching deadline, clean refund');
+      console.warn(
+        `[provider] SLA guard firing for order ${order.orderId} — rejecting to refund buyer`,
+      );
+      await client.rejectOrder(order.orderId, 'SLA guard: approaching deadline, clean refund');
     } catch (_err) {
       // Order may have already been delivered/rejected — safe to ignore
     }

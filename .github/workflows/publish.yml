@@ -1,0 +1,67 @@
+name: Publish to npm
+
+# Publishes @edycutjong/croo-core to npm when a version tag is pushed.
+#
+# Release flow (run locally):
+#   npm version patch        # 0.1.0 -> 0.1.1, commits + creates tag v0.1.1
+#   git push --follow-tags   # pushes the commit AND the tag
+#
+# Pushing the v* tag triggers this workflow, which re-verifies the build and
+# publishes that exact version. Versioning is deliberate — no auto-increment.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Least privilege. `id-token: write` is required for npm provenance.
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: "Publish @edycutjong/croo-core"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag matches package.json version
+        run: |
+          PKG_VERSION="v$(node -p "require('./package.json').version")"
+          if [ "$PKG_VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION."
+            echo "Bump with 'npm version <patch|minor|major>' so the tag and package.json agree."
+            exit 1
+          fi
+          echo "✅ Tag $GITHUB_REF_NAME matches package.json ($PKG_VERSION)"
+
+      # Self-contained quality gate (ci.yml does not run on tags). The strict
+      # 100% coverage threshold in vitest.config.ts is enforced here too.
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npm run typecheck
+      - name: Unit tests + 100% coverage gate
+        run: npm run test:coverage
+      - name: Build
+        run: npm run build
+
+      # Checks + build already ran above, so skip the prepublishOnly hook to
+      # avoid re-running them. --provenance attaches a signed build attestation
+      # (requires a public repo + the id-token permission above).
+      - name: Publish to npm
+        run: npm publish --provenance --access public --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

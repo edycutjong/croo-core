@@ -38,14 +38,16 @@ export function makeClient(sdkKey: string, overrides?: Partial<CrooConfig>) {
 
   // Dynamic import to avoid hard-coupling to the SDK at compile time.
   // The SDK is a peer dependency — each agent controls its own version.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { AgentClient, Config } = requireSdk();
+  const { AgentClient } = requireSdk();
 
-  const sdkConfig = new Config();
-  sdkConfig.baseURL = config.baseURL;
-  sdkConfig.wsURL = config.wsURL;
-  if (config.rpcURL) sdkConfig.rpcURL = config.rpcURL;
-  if (config.logger) sdkConfig.logger = config.logger;
+  // The SDK's `Config` is a plain object (a type-only export), not a class —
+  // build the config literal and hand it straight to the AgentClient ctor.
+  const sdkConfig = {
+    baseURL: config.baseURL,
+    wsURL: config.wsURL,
+    ...(config.rpcURL ? { rpcURL: config.rpcURL } : {}),
+    ...(config.logger ? { logger: config.logger } : {}),
+  };
 
   return new AgentClient(sdkConfig, sdkKey);
 }
@@ -53,11 +55,24 @@ export function makeClient(sdkKey: string, overrides?: Partial<CrooConfig>) {
 /**
  * Resolve the CROO SDK. Throws a clear error if not installed.
  */
+import { createRequire } from 'module';
+
 function requireSdk() {
+  if (process.env.CROO_MOCK === 'true' || process.env.CROO_ENV === 'mock') {
+    return {
+      AgentClient: class MockAgentClient {
+        constructor(cfg: unknown, key: string) { this.config = cfg; this.key = key; }
+        config: unknown; key: string;
+        async uploadFile(_buf: Buffer, name: string) { return `https://mock.croo.network/files/${name}`; }
+      },
+    };
+  }
+
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const require = createRequire(import.meta.url);
     return require('@croo-network/sdk');
   } catch (_err) {
+    console.error('requireSdk error:', _err);
     throw new Error(
       'Missing peer dependency: @croo-network/sdk. Run: npm install @croo-network/sdk'
     );

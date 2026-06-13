@@ -1,69 +1,80 @@
 /**
  * croo-core — Shared types for the Constellation agent suite.
  *
- * All types are derived from the verified CROO SDK surface
- * (see CROO_VERIFIED_APIS.md). Do NOT invent types — if it's
- * not documented in the SDK reference, it doesn't exist.
+ * Domain types (Order, Negotiation, Delivery, Event, ...) are imported
+ * directly from @croo-network/sdk via `import type`, so they are ALWAYS in
+ * sync with the installed SDK and are fully erased at runtime — mock mode
+ * still works without the SDK installed.
+ *
+ * `EventType` / `DeliverableType` are kept as local runtime constants (the
+ * SDK exposes them as values, and importing them would force a load-time SDK
+ * dependency). A drift-guard test (types.test.ts) asserts these match the
+ * SDK's values exactly, so they can never silently diverge again.
  */
 
-// ─── SDK Re-exports (type-level) ───────────────────────────────────
+import type {
+  Order,
+  Negotiation,
+  Delivery,
+  Event,
+  PayOrderResult,
+  DeliverOrderRequest,
+  DeliverOrderResult,
+  NegotiateOrderRequest,
+  AcceptNegotiationResult,
+  Logger,
+} from '@croo-network/sdk';
+
+// Re-export the SDK domain types so agents import them from one place.
+export type {
+  Order,
+  Negotiation,
+  Delivery,
+  Event,
+  PayOrderResult,
+  DeliverOrderRequest,
+  DeliverOrderResult,
+  NegotiateOrderRequest,
+  AcceptNegotiationResult,
+  Logger,
+};
+
+// ─── CROO client config ────────────────────────────────────────────
 
 /**
  * Configuration for the CROO AgentClient.
  * Base Mainnet (chain 8453), gas sponsored by CROO Paymaster.
  */
 export interface CrooConfig {
-  baseURL: string;   // 'https://api.croo.network'
-  wsURL: string;     // 'wss://api.croo.network/ws'
-  rpcURL?: string;   // 'https://mainnet.base.org' (optional, defaults)
-  logger?: Console;
+  baseURL: string; // 'https://api.croo.network'
+  wsURL: string; // 'wss://api.croo.network/ws'
+  rpcURL?: string; // 'https://mainnet.base.org' (optional, defaults)
+  logger?: Logger;
 }
 
-// ─── Provider Types ────────────────────────────────────────────────
+// ─── Provider handler contract ─────────────────────────────────────
 
-export interface ProviderHandlers<TInput = unknown, TOutput = unknown> {
+export interface ProviderHandlers<TOutput = unknown> {
   /** Filter: return true if this negotiation should be accepted. */
-  serviceMatch: (event: NegotiationEvent) => boolean;
+  serviceMatch: (event: Event) => boolean;
 
-  /** The actual work function. Receives parsed order, returns deliverable. */
-  work: (order: Order<TInput>) => Promise<Deliverable<TOutput>>;
+  /** The work function. Receives the paid Order, returns a deliverable. */
+  work: (order: Order) => Promise<Deliverable<TOutput>>;
 
-  /** Milliseconds before SLA to fire a safety rejectOrder. Default 60_000 (60s). */
+  /** Milliseconds before the SLA deadline to fire a safety rejectOrder. Default 60_000 (60s). */
   slaGuardMs?: number;
 }
 
-export interface NegotiationEvent {
-  type: string;
-  negotiation_id: string;
-  service_id?: string;
-  [key: string]: unknown;
-}
-
-export interface Order<T = unknown> {
-  id: string;
-  status: OrderStatus;
-  service_id: string;
-  amount?: string;
-  sla_minutes?: number;
-  requirement?: T;
-  created_at?: string;
-  paid_at?: string;
-  [key: string]: unknown;
-}
-
-export type OrderStatus =
-  | 'created'
-  | 'paid'
-  | 'completed'
-  | 'rejected'
-  | 'expired';
-
+/**
+ * Work output. The provider loop maps this to the SDK's `DeliverOrderRequest`
+ * (`text` -> deliverableText, `schema` -> deliverableSchema as JSON).
+ */
 export interface Deliverable<T = unknown> {
   type: 'text' | 'schema';
   data: T;
 }
 
-// ─── Hire (Requester) Types ────────────────────────────────────────
+// ─── Hire (requester) ──────────────────────────────────────────────
 
 export interface HireRequest {
   serviceId: string;
@@ -84,6 +95,7 @@ export interface HireResult<T = unknown> {
 
 export type TraceEventType =
   | 'pipeline_start'
+  | 'pipeline_resume'
   | 'hire_start'
   | 'hire_paid'
   | 'hire_delivered'
@@ -124,17 +136,26 @@ export interface MockConfig {
   latencyMs?: number;
 }
 
-// ─── WebSocket Events (from SDK reference) ─────────────────────────
+// ─── WebSocket events / deliverable kinds ──────────────────────────
+//
+// Local copies of the SDK's `EventType` / `DeliverableType` value constants.
+// MUST stay byte-for-byte identical to @croo-network/sdk — enforced by the
+// drift-guard test in __tests__/types.test.ts.
 
 export const EventType = {
-  NegotiationCreated: 'negotiation_created',
-  NegotiationRejected: 'negotiation_rejected',
-  NegotiationExpired: 'negotiation_expired',
+  NegotiationCreated: 'order_negotiation_created',
+  NegotiationRejected: 'order_negotiation_rejected',
+  NegotiationExpired: 'order_negotiation_expired',
   OrderCreated: 'order_created',
   OrderPaid: 'order_paid',
   OrderCompleted: 'order_completed',
   OrderRejected: 'order_rejected',
   OrderExpired: 'order_expired',
+} as const;
+
+export const DeliverableType = {
+  Text: 'text',
+  Schema: 'schema',
 } as const;
 
 export type EventTypeName = (typeof EventType)[keyof typeof EventType];

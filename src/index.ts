@@ -20,14 +20,13 @@ export type { TraceEmitter } from './hire.js';
 // Mock mode
 export { isMockMode, resetMockState } from './mock.js';
 
-// Types
-export { EventType } from './types.js';
+// Runtime constants (kept in sync with @croo-network/sdk)
+export { EventType, DeliverableType } from './types.js';
+
+// Core abstractions
 export type {
   CrooConfig,
   ProviderHandlers,
-  NegotiationEvent,
-  Order,
-  OrderStatus,
   Deliverable,
   HireRequest,
   HireResult,
@@ -36,4 +35,18 @@ export type {
   AuditEntry,
   MockConfig,
   EventTypeName,
+} from './types.js';
+
+// Re-exported SDK domain types (single import site for agents)
+export type {
+  Order,
+  Negotiation,
+  Delivery,
+  Event,
+  PayOrderResult,
+  DeliverOrderRequest,
+  DeliverOrderResult,
+  NegotiateOrderRequest,
+  AcceptNegotiationResult,
+  Logger,
 } from './types.js';

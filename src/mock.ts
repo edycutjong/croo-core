@@ -10,7 +10,6 @@ import type {
   ProviderHandlers,
   HireRequest,
   HireResult,
-  TraceEvent,
   Order,
   Deliverable,
 } from './types.js';
@@ -28,9 +27,9 @@ const MOCK_LATENCY = Number(process.env.CROO_MOCK_LATENCY) || 500;
 
 // ─── Mock Provider ─────────────────────────────────────────────────
 
-interface MockStream {
+export interface MockStream {
   close: () => void;
-  /** Simulate an incoming order (for testing). */
+  /** Simulate an incoming paid order (for testing). */
   simulateOrder: (order: Partial<Order>) => Promise<void>;
 }
 
@@ -38,33 +37,37 @@ interface MockStream {
  * Mock provider loop. Returns a fake stream with a simulateOrder method
  * for testing the work function without a real WebSocket.
  */
-export async function mockProvider<TInput, TOutput>(
-  handlers: ProviderHandlers<TInput, TOutput>,
+export async function mockProvider<TOutput>(
+  handlers: ProviderHandlers<TOutput>,
 ): Promise<MockStream> {
   console.log('[mock] Provider started in mock mode — no WebSocket connection');
 
   const stream: MockStream = {
     close: () => console.log('[mock] Provider stream closed'),
     simulateOrder: async (partial: Partial<Order>) => {
-      const order: Order<TInput> = {
-        id: partial.id ?? `mock_order_${Date.now()}`,
+      const now = new Date().toISOString();
+      // Minimal SDK-shaped Order — only the fields the work function reads.
+      const order = {
+        orderId: partial.orderId ?? `mock_order_${Date.now()}`,
+        negotiationId: partial.negotiationId ?? 'mock_neg',
+        serviceId: partial.serviceId ?? 'mock_service',
+        price: partial.price ?? '0.01',
         status: 'paid',
-        service_id: partial.service_id ?? 'mock_service',
-        amount: partial.amount ?? '0.01',
-        sla_minutes: partial.sla_minutes ?? 15,
-        requirement: (partial.requirement ?? {}) as TInput,
-        created_at: new Date().toISOString(),
-        paid_at: new Date().toISOString(),
+        deliveryWindow: partial.deliveryWindow ?? 900,
+        slaDeadline:
+          partial.slaDeadline ?? new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        createdAt: now,
+        paidAt: now,
         ...partial,
-      };
+      } as Order;
 
       await sleep(MOCK_LATENCY);
 
       try {
         const result: Deliverable<TOutput> = await handlers.work(order);
-        console.log(`[mock] Work completed for order ${order.id}:`, result.type);
+        console.log(`[mock] Work completed for order ${order.orderId}:`, result.type);
       } catch (err) {
-        console.error(`[mock] Work failed for order ${order.id}:`, err);
+        console.error(`[mock] Work failed for order ${order.orderId}:`, err);
       }
     },
   };
@@ -149,7 +152,9 @@ export async function mockHire<T>(
   const serviceKey = Object.keys(MOCK_DELIVERIES).find(
     (key) => request.serviceId.toLowerCase().includes(key),
   );
-  const delivery = MOCK_DELIVERIES[serviceKey ?? 'research'] ?? { result: 'mock' };
+  // `find` only ever returns a key that exists in MOCK_DELIVERIES, and the
+  // 'research' fallback is always present, so the lookup is never undefined.
+  const delivery = MOCK_DELIVERIES[serviceKey ?? 'research'];
 
   const durationMs = Date.now() - startMs;
 
@@ -161,7 +166,7 @@ export async function mockHire<T>(
   });
 
   return {
-    orderId,
+    orderId: orderId as string,
     delivery: delivery as T,
     txHash: `0xmock_${orderId}`,
     amountPaid: '0.01',

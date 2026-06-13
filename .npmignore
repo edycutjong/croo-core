@@ -1,0 +1,31 @@
+# Only dist/ ships to npm — the "files" whitelist in package.json is the
+# primary filter; this .npmignore is a belt-and-suspenders backstop so dev
+# artifacts never leak into the published tarball even if "files" is removed.
+#
+# (npm ALWAYS includes: package.json, README.md, LICENSE — no need to list them.)
+
+# Source & build inputs
+src/
+tsconfig.json
+
+# Tests & coverage
+__tests__/
+coverage/
+vitest.config.ts
+*.tgz
+
+# Tooling / CI / repo meta
+.github/
+eslint.config.mjs
+Makefile
+SECURITY.md
+.gitignore
+
+# Docs & marketing assets (README on npm renders from README.md only)
+docs/
+
+# Local / env / logs
+.env
+.env.local
+*.log
+.DS_Store
