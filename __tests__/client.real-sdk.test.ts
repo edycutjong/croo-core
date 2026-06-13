@@ -34,7 +34,7 @@ describe.runIf(sdkAvailable())('makeClient — real @croo-network/sdk', () => {
   it('constructs the REAL AgentClient, not the in-memory mock', async () => {
     const { makeClient } = await import('../src/client.js');
     const client = makeClient('croo_sk_test_probe');
-    expect(client.constructor.name).toBe('AgentClient');
+    expect(client.constructor.name).toBe('CrooAgentClient');
   });
 
   it('exposes every SDK method croo-core depends on', async () => {

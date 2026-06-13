@@ -23,7 +23,7 @@ class FakeStream {
 /** A client whose negotiate/pay drive the stream through the happy path. */
 function happyClient(stream: FakeStream) {
   return {
-    connectWebSocket: vi.fn(async () => stream),
+    getSharedStream: vi.fn(async () => stream),
     negotiateOrder: vi.fn(async () => {
       setImmediate(() =>
         stream.emit('order_created', { negotiation_id: 'neg_1', order_id: 'ord_1' }),
@@ -65,7 +65,7 @@ describe('hire (live mode)', () => {
     expect(result.txHash).toBe('tx_hash_1');
     expect(result.amountPaid).toBe('0.05');
     expect(result.delivery).toBe('success');
-    expect(stream.closed).toBe(true); // closed in finally
+
   });
 
   it('emits trace events during the live flow', async () => {
@@ -93,14 +93,14 @@ describe('hire (live mode)', () => {
   it('rejects and closes the stream if negotiation fails', async () => {
     const stream = new FakeStream();
     const client = {
-      connectWebSocket: vi.fn(async () => stream),
+      getSharedStream: vi.fn(async () => stream),
       negotiateOrder: vi.fn().mockRejectedValue(new Error('Negotiation denied')),
     };
 
     await expect(hire(client, { serviceId: 'svc_1', requirement: {} })).rejects.toThrow(
       'Negotiation denied',
     );
-    expect(stream.closed).toBe(true);
+
   });
 });
 

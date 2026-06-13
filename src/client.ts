@@ -49,7 +49,48 @@ export function makeClient(sdkKey: string, overrides?: Partial<CrooConfig>) {
     ...(config.logger ? { logger: config.logger } : {}),
   };
 
-  return new AgentClient(sdkConfig, sdkKey);
+  class CrooAgentClient extends AgentClient {
+    private activeStream: any | null = null;
+    private streamConnectionPromise: Promise<any> | null = null;
+
+    async getSharedStream() {
+      if (this.activeStream) return this.activeStream;
+      if (this.streamConnectionPromise) return this.streamConnectionPromise;
+
+      this.streamConnectionPromise = this.connectWebSocket()
+        .then((stream: any) => {
+          this.activeStream = stream;
+          this.streamConnectionPromise = null;
+
+          const reset = () => {
+            this.activeStream = null;
+            this.streamConnectionPromise = null;
+          };
+
+          if (typeof stream.on === 'function') {
+            stream.on('close', reset);
+            stream.on('error', reset);
+          }
+          return stream;
+        })
+        .catch((err: any) => {
+          this.streamConnectionPromise = null;
+          throw err;
+        });
+
+      return this.streamConnectionPromise;
+    }
+
+    disconnect() {
+      if (this.activeStream && typeof this.activeStream.close === 'function') {
+        this.activeStream.close();
+      }
+      this.activeStream = null;
+      this.streamConnectionPromise = null;
+    }
+  }
+
+  return new CrooAgentClient(sdkConfig, sdkKey);
 }
 
 /**

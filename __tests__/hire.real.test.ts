@@ -34,7 +34,7 @@ function fullClient(
   payResult: Record<string, unknown> = { txHash: 'tx', order: { price: '0.05' } },
 ) {
   return {
-    connectWebSocket: vi.fn(async () => stream),
+    getSharedStream: vi.fn(async () => stream),
     negotiateOrder: vi.fn(async () => {
       setImmediate(() =>
         stream.emit('order_created', { negotiation_id: 'neg_1', order_id: 'ord_1' }),
@@ -57,7 +57,7 @@ describe('hire — real flow edge cases', () => {
   it('throws and closes the stream if order_created has no order_id', async () => {
     const stream = new FakeStream();
     const client = {
-      connectWebSocket: vi.fn(async () => stream),
+      getSharedStream: vi.fn(async () => stream),
       negotiateOrder: vi.fn(async () => {
         setImmediate(() => stream.emit('order_created', { negotiation_id: 'neg_1' }));
         return { negotiationId: 'neg_1' };
@@ -67,7 +67,7 @@ describe('hire — real flow edge cases', () => {
     await expect(hire(client, { serviceId: 's', requirement: {} })).rejects.toThrow(
       'without an order_id',
     );
-    expect(stream.closed).toBe(true);
+
   });
 
   it('JSON-parses a schema deliverable', async () => {
@@ -119,7 +119,7 @@ describe('hire — real flow edge cases', () => {
   it('ignores events that do not match the predicate', async () => {
     const stream = new FakeStream();
     const client = {
-      connectWebSocket: vi.fn(async () => stream),
+      getSharedStream: vi.fn(async () => stream),
       negotiateOrder: vi.fn(async () => {
         setImmediate(() => {
           stream.emit('order_created', { negotiation_id: 'OTHER', order_id: 'nope' });
@@ -143,7 +143,7 @@ describe('hire — real flow edge cases', () => {
     try {
       const stream = new FakeStream();
       const client = {
-        connectWebSocket: vi.fn(async () => stream),
+        getSharedStream: vi.fn(async () => stream),
         negotiateOrder: vi.fn(async () => ({ negotiationId: 'neg_1' })), // never emits
       };
 
@@ -151,7 +151,7 @@ describe('hire — real flow edge cases', () => {
       const assertion = expect(promise).rejects.toThrow('Timeout waiting for order_created');
       await vi.advanceTimersByTimeAsync(30_001);
       await assertion;
-      expect(stream.closed).toBe(true);
+  
     } finally {
       vi.useRealTimers();
     }

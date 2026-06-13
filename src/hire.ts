@@ -42,7 +42,7 @@ export async function hire<T = unknown>(
   const startMs = Date.now();
   const agentName = request.serviceId.slice(0, 12) + '...';
 
-  const stream = await client.connectWebSocket();
+  const stream = await (client as any).getSharedStream();
   try {
     // Step 1: Negotiate (requirements are sent as a JSON string)
     trace?.({
@@ -106,7 +106,7 @@ export async function hire<T = unknown>(
       durationMs,
     };
   } finally {
-    stream.close();
+    // Stream is now managed by the client as a singleton
   }
 }
 

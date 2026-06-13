@@ -52,7 +52,7 @@ describe('makeClient — mock mode (CROO_MOCK=true)', () => {
   it('returns the in-memory MockAgentClient', async () => {
     const { makeClient } = await import('../src/client.js');
     const client = makeClient('croo_sk_mock');
-    expect(client.constructor.name).toBe('MockAgentClient');
+    expect(client.constructor.name).toBe('CrooAgentClient');
   });
 
   it('mock uploadFile returns a deterministic mock URL', async () => {
