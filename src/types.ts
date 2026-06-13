@@ -69,16 +69,15 @@ export interface ProviderHandlers<TOutput = unknown> {
  * Work output. The provider loop maps this to the SDK's `DeliverOrderRequest`
  * (`text` -> deliverableText, `schema` -> deliverableSchema as JSON).
  */
-export interface Deliverable<T = unknown> {
-  type: 'text' | 'schema';
-  data: T;
-}
+export type Deliverable<T = unknown> =
+  | { type: 'text'; data: string }
+  | { type: 'schema'; data: T };
 
 // ─── Hire (requester) ──────────────────────────────────────────────
 
-export interface HireRequest {
+export interface HireRequest<TReq = Record<string, unknown>> {
   serviceId: string;
-  requirement: Record<string, unknown>;
+  requirement: TReq;
   /** Maximum USDC to spend. If the service price exceeds this, reject. */
   maxPrice?: number;
 }

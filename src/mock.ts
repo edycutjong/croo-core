@@ -23,7 +23,8 @@ export function isMockMode(): boolean {
 }
 
 /** Default simulated latency in mock mode (ms). */
-const MOCK_LATENCY = Number(process.env.CROO_MOCK_LATENCY) || 500;
+const envLatency = process.env.CROO_MOCK_LATENCY;
+const MOCK_LATENCY = envLatency !== undefined ? Number(envLatency) : 500;
 
 // ─── Mock Provider ─────────────────────────────────────────────────
 
@@ -139,6 +140,16 @@ export async function mockHire<T>(
 
   await sleep(MOCK_LATENCY);
 
+  if (request.serviceId.toLowerCase().includes('fail')) {
+    trace?.({
+      type: 'hire_failed',
+      agent: agentName,
+      timestamp: Date.now(),
+      data: { reason: 'Simulated network/provider failure' },
+    });
+    throw new Error(`[mock] Provider rejected order or network failed for ${request.serviceId}`);
+  }
+
   trace?.({
     type: 'hire_paid',
     agent: agentName,
@@ -154,7 +165,8 @@ export async function mockHire<T>(
   );
   // `find` only ever returns a key that exists in MOCK_DELIVERIES, and the
   // 'research' fallback is always present, so the lookup is never undefined.
-  const delivery = MOCK_DELIVERIES[serviceKey ?? 'research'];
+  const rawDelivery = MOCK_DELIVERIES[serviceKey ?? 'research'];
+  const delivery = structuredClone(rawDelivery);
 
   const durationMs = Date.now() - startMs;
 
