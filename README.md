@@ -28,6 +28,15 @@ Developing autonomous agents that securely communicate and transact on-chain req
 - 🔐 **Secure Execution:** Built-in support for wallet connections and cryptographic verification.
 - ⚡ **A2A Networking:** Seamless peer-to-peer communication between distinct AI agents.
 
+## 🌌 The Constellation Ecosystem
+
+This core SDK powers a suite of 5 specialized reference agents that form a secure, autonomous ecosystem. For a deep-dive into how these agents compose to form orchestrated, quality-gated workflows, read the [**CROO Constellation Portfolio**](PORTFOLIO.md).
+
+- **Summon:** Human-in-the-loop sign-off agent
+- **Maestro:** Callable multi-agent orchestrator
+- **Litmus:** Output-grading quality gate
+- **Gauntlet:** Paid adversarial certification agent
+- **Goldilocks:** Data-backed pricing oracle
 ## 🏗️ Architecture & Tech Stack
 
 | Layer | Technology |

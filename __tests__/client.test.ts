@@ -55,12 +55,12 @@ describe('makeClient — mock mode (CROO_MOCK=true)', () => {
     expect(client.constructor.name).toBe('CrooAgentClient');
   });
 
-  it('mock uploadFile returns a deterministic mock URL', async () => {
+  it('mock uploadFile returns a deterministic mock URL (SDK signature: fileName, body)', async () => {
     const { makeClient } = await import('../src/client.js');
     const client = makeClient('croo_sk_mock') as {
-      uploadFile: (b: Buffer, name: string) => Promise<string>;
+      uploadFile: (fileName: string, body: Buffer) => Promise<string>;
     };
-    await expect(client.uploadFile(Buffer.from('x'), 'report.pdf')).resolves.toBe(
+    await expect(client.uploadFile('report.pdf', Buffer.from('x'))).resolves.toBe(
       'https://mock.croo.network/files/report.pdf',
     );
   });
@@ -117,5 +117,120 @@ describe('makeClient — SDK not installed', () => {
     expect(() => makeClient('croo_sk_real')).toThrow(
       'Missing peer dependency: @croo-network/sdk',
     );
+  });
+});
+
+// The shared-WebSocket multiplexing lives on the CrooAgentClient subclass.
+// Exercised in mock mode (no real SDK needed) by stubbing connectWebSocket on
+// the instance with a fake stream.
+describe('makeClient — shared WebSocket stream (getSharedStream / disconnect)', () => {
+  const original = process.env.CROO_MOCK;
+
+  beforeEach(() => {
+    vi.resetModules();
+    process.env.CROO_MOCK = 'true';
+  });
+
+  afterEach(() => {
+    if (original === undefined) delete process.env.CROO_MOCK;
+    else process.env.CROO_MOCK = original;
+  });
+
+  async function freshClient() {
+    const { makeClient } = await import('../src/client.js');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return makeClient('croo_sk_mock') as any;
+  }
+
+  it('connects once and caches the shared stream', async () => {
+    const client = await freshClient();
+    const fakeStream = { on: vi.fn(), close: vi.fn() };
+    client.connectWebSocket = vi.fn().mockResolvedValue(fakeStream);
+
+    const s1 = await client.getSharedStream();
+    const s2 = await client.getSharedStream();
+
+    expect(s1).toBe(fakeStream);
+    expect(s2).toBe(fakeStream);
+    expect(client.connectWebSocket).toHaveBeenCalledTimes(1);
+    expect(fakeStream.on).toHaveBeenCalledWith('close', expect.any(Function));
+    expect(fakeStream.on).toHaveBeenCalledWith('error', expect.any(Function));
+  });
+
+  it('dedupes concurrent callers into a single connection', async () => {
+    const client = await freshClient();
+    const fakeStream = { on: vi.fn(), close: vi.fn() };
+    let resolveConnect: (s: unknown) => void = () => {};
+    client.connectWebSocket = vi.fn(() => new Promise((r) => { resolveConnect = r; }));
+
+    const p1 = client.getSharedStream();
+    const p2 = client.getSharedStream();
+    resolveConnect(fakeStream);
+    const [s1, s2] = await Promise.all([p1, p2]);
+
+    expect(s1).toBe(fakeStream);
+    expect(s2).toBe(fakeStream);
+    expect(client.connectWebSocket).toHaveBeenCalledTimes(1);
+  });
+
+  it('reconnects after the shared stream emits close', async () => {
+    const client = await freshClient();
+    const fakeStream = { on: vi.fn(), close: vi.fn() };
+    client.connectWebSocket = vi.fn().mockResolvedValue(fakeStream);
+
+    await client.getSharedStream();
+    const closeHandler = fakeStream.on.mock.calls.find(
+      (c: unknown[]) => c[0] === 'close',
+    )![1] as () => void;
+    closeHandler(); // reset internal state
+
+    await client.getSharedStream();
+    expect(client.connectWebSocket).toHaveBeenCalledTimes(2);
+  });
+
+  it('handles a stream without an on() method', async () => {
+    const client = await freshClient();
+    const fakeStream = { close: vi.fn() }; // no .on
+    client.connectWebSocket = vi.fn().mockResolvedValue(fakeStream);
+    await expect(client.getSharedStream()).resolves.toBe(fakeStream);
+  });
+
+  it('resets the pending promise so a failed connection can be retried', async () => {
+    const client = await freshClient();
+    const fakeStream = { on: vi.fn(), close: vi.fn() };
+    client.connectWebSocket = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('ws down'))
+      .mockResolvedValueOnce(fakeStream);
+
+    await expect(client.getSharedStream()).rejects.toThrow('ws down');
+    await expect(client.getSharedStream()).resolves.toBe(fakeStream);
+    expect(client.connectWebSocket).toHaveBeenCalledTimes(2);
+  });
+
+  it('disconnect() closes the active stream and clears state', async () => {
+    const client = await freshClient();
+    const fakeStream = { on: vi.fn(), close: vi.fn() };
+    client.connectWebSocket = vi.fn().mockResolvedValue(fakeStream);
+
+    await client.getSharedStream();
+    client.disconnect();
+
+    expect(fakeStream.close).toHaveBeenCalled();
+    await client.getSharedStream(); // reconnects after disconnect
+    expect(client.connectWebSocket).toHaveBeenCalledTimes(2);
+  });
+
+  it('disconnect() is a no-op when no stream is active', async () => {
+    const client = await freshClient();
+    expect(() => client.disconnect()).not.toThrow();
+  });
+
+  it('disconnect() tolerates a stream without a close() method', async () => {
+    const client = await freshClient();
+    const fakeStream = { on: vi.fn() }; // no close
+    client.connectWebSocket = vi.fn().mockResolvedValue(fakeStream);
+    await client.getSharedStream();
+    expect(() => client.disconnect()).not.toThrow();
   });
 });

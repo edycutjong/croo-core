@@ -108,7 +108,8 @@ function requireSdk(): any {
       AgentClient: class MockAgentClient {
         constructor(cfg: unknown, key: string) { this.config = cfg; this.key = key; }
         config: unknown; key: string;
-        async uploadFile(_buf: Buffer, name: string) { return `https://mock.croo.network/files/${name}`; }
+        // Match the real SDK signature: uploadFile(fileName, body).
+        async uploadFile(fileName: string, _body: Buffer) { return `https://mock.croo.network/files/${fileName}`; }
       },
     };
   }

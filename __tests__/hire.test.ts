@@ -102,6 +102,30 @@ describe('hire (live mode)', () => {
     );
 
   });
+
+  it('cleans up listeners via off() when the stream supports it', async () => {
+    const stream = new FakeStream();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (stream as any).off = vi.fn((type: string, h: (e: Record<string, unknown>) => void) => {
+      stream.handlers[type] = (stream.handlers[type] ?? []).filter((x) => x !== h);
+    });
+
+    await hire(happyClient(stream), { serviceId: 'svc_1', requirement: {} });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((stream as any).off).toHaveBeenCalled();
+  });
+
+  it('cleans up listeners via removeListener() when off() is unavailable', async () => {
+    const stream = new FakeStream();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (stream as any).removeListener = vi.fn((type: string, h: (e: Record<string, unknown>) => void) => {
+      stream.handlers[type] = (stream.handlers[type] ?? []).filter((x) => x !== h);
+    });
+
+    await hire(happyClient(stream), { serviceId: 'svc_1', requirement: {} });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((stream as any).removeListener).toHaveBeenCalled();
+  });
 });
 
 describe('hire (mock mode)', () => {

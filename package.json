@@ -28,6 +28,7 @@
     "typecheck": "tsc --noEmit",
     "audit": "npm audit --audit-level=high || true",
     "ci": "npm run audit && npm run lint && npm run typecheck && npm run test",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run ci && npm run build"
   },
   "keywords": [

@@ -95,6 +95,14 @@ describe('mockHire', () => {
     expect(result.delivery.approved).toBe(true);
   });
 
+  it('throws a simulated failure (and emits hire_failed) for service IDs containing "fail"', async () => {
+    const trace = vi.fn();
+    await expect(
+      mockHire({ serviceId: 'svc_fail_probe', requirement: {} }, trace),
+    ).rejects.toThrow('[mock] Provider rejected order or network failed');
+    expect(trace).toHaveBeenCalledWith(expect.objectContaining({ type: 'hire_failed' }));
+  });
+
   it('increments order IDs sequentially', async () => {
     const request: HireRequest = {
       serviceId: 'svc_test',
@@ -232,5 +240,25 @@ describe('mockProvider', () => {
     // Should not throw
     await stream.simulateOrder({ orderId: 'fail_order' });
     expect(workFn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('MOCK_LATENCY configuration (module load)', () => {
+  const original = process.env.CROO_MOCK_LATENCY;
+
+  afterEach(() => {
+    vi.resetModules();
+    if (original === undefined) delete process.env.CROO_MOCK_LATENCY;
+    else process.env.CROO_MOCK_LATENCY = original;
+  });
+
+  it('reads CROO_MOCK_LATENCY from the environment when set at load time', async () => {
+    vi.resetModules();
+    process.env.CROO_MOCK_LATENCY = '0';
+    // Re-evaluating the module exercises the env-defined branch of the
+    // MOCK_LATENCY ternary; a 0ms latency keeps the call instant.
+    const fresh = await import('../src/mock.js');
+    const result = await fresh.mockHire({ serviceId: 'svc_research_x', requirement: {} });
+    expect(result.orderId).toMatch(/^mock_order_/);
   });
 });

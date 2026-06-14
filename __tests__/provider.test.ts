@@ -186,6 +186,26 @@ describe('runProvider', () => {
     expect(client.rejectOrder).toHaveBeenCalledWith('ord_2', 'Provider internal error during execution');
   });
 
+  it('surfaces a CrooSafeError message verbatim as the rejection reason', async () => {
+    const stream = { on: vi.fn() };
+    const safe = new Error('Insufficient market data — refund issued');
+    safe.name = 'CrooSafeError';
+    const client = {
+      connectWebSocket: vi.fn().mockResolvedValue(stream),
+      getOrder: vi.fn().mockResolvedValue({ orderId: 'ord_safe', status: 'paid' }),
+      deliverOrder: vi.fn(),
+      rejectOrder: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await runProvider(client, {
+      serviceMatch: () => true,
+      work: vi.fn().mockRejectedValue(safe),
+    });
+
+    await handlerFor(stream, EventType.OrderPaid)({ order_id: 'ord_safe' });
+    expect(client.rejectOrder).toHaveBeenCalledWith('ord_safe', 'Insufficient market data — refund issued');
+  });
+
   it('swallows acceptNegotiation failures instead of crashing the loop', async () => {
     const stream = { on: vi.fn() };
     const client = {
