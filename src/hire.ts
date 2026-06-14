@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * croo-core/hire — Sequential requester helper.
  *
@@ -137,7 +138,6 @@ function waitForEvent(
     stream.on(eventType, handler);
 
     function cleanup() {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const s = stream as any;
       if (typeof s.off === 'function') s.off(eventType, handler);
       else if (typeof s.removeListener === 'function') s.removeListener(eventType, handler);

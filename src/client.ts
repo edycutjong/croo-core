@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * croo-core/client — Factory for the CROO AgentClient.
  *
@@ -50,8 +51,11 @@ export function makeClient(sdkKey: string, overrides?: Partial<CrooConfig>) {
   };
 
   class CrooAgentClient extends AgentClient {
-    private activeStream: any | null = null;
-    private streamConnectionPromise: Promise<any> | null = null;
+    constructor(cfg: unknown, key: string) {
+      super(cfg, key);
+    }
+    activeStream: any | null = null;
+    streamConnectionPromise: Promise<any> | null = null;
 
     async getSharedStream() {
       if (this.activeStream) return this.activeStream;
@@ -98,7 +102,7 @@ export function makeClient(sdkKey: string, overrides?: Partial<CrooConfig>) {
  */
 import { createRequire } from 'module';
 
-function requireSdk() {
+function requireSdk(): any {
   if (process.env.CROO_MOCK === 'true' || process.env.CROO_ENV === 'mock') {
     return {
       AgentClient: class MockAgentClient {
