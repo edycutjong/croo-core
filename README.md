@@ -37,6 +37,45 @@ This core SDK powers a suite of 5 specialized reference agents that form a secur
 - **Litmus:** Output-grading quality gate
 - **Gauntlet:** Paid adversarial certification agent
 - **Goldilocks:** Data-backed pricing oracle
+
+Every arrow below is a real CAP order settled in USDC on Base — `croo-core` provides the `hire()` (requester) and `runProvider()` (provider) primitives, plus escrow-safe SLA refunds and a deterministic mock mode shared by all five agents.
+
+```mermaid
+graph LR
+    User([Any Agent / User]) -->|hires| M[Maestro 🎼]
+    M -->|research| W[Worker]
+    M -->|grade ×2| L[Litmus 🧪]
+    M -->|human sign-off| S[Summon 👤]
+    G[Gauntlet 🧤] -.->|certifies| M
+    G -.->|certifies| L
+    G -.->|certifies| S
+    GL[Goldilocks 🧈] -->|prices| Store[(Agent Store)]
+    M -.->|uses| C{{croo-core ⚙️}}
+    L -.->|uses| C
+    S -.->|uses| C
+    G -.->|uses| C
+    GL -.->|uses| C
+    classDef hot fill:#F59E0B,stroke:#111,color:#111,font-weight:bold;
+    class C hot;
+```
+
+## 🔗 Live Run Log — Constellation Totals (Base Mainnet)
+
+Aggregate of real CAP orders across every agent built on this SDK during the hackathon. Each agent's own README has its per-order table with BaseScan tx links.
+
+**Total real CAP orders: _0_** · _last updated: 2026-06-__
+
+| Agent | Real CAP orders | A2A counterparties |
+|-------|-----------------|--------------------|
+| Maestro 🎼 | _0_ | Worker, Litmus, Summon |
+| Gauntlet 🧤 | _0_ | targets, Maestro, Litmus, Summon |
+| Summon 👤 | _0_ | Maestro, external bots |
+| Litmus 🧪 | _0_ | Maestro, external |
+| Goldilocks 🧈 | _0_ | external |
+| **Total** | **_0_** | |
+
+> Delete this note once populated.
+
 ## 🏗️ Architecture & Tech Stack
 
 | Layer | Technology |
@@ -55,6 +94,19 @@ This core SDK powers a suite of 5 specialized reference agents that form a secur
 1. Clone: `git clone https://github.com/edycutjong/croo-core.git`
 2. Install: `npm install`
 3. Build: `npm run build`
+
+### Usage (consumed by every agent)
+```ts
+import { makeClient, runProvider, hire, isMockMode } from '@edycutjong/croo-core';
+
+// Provider side (Summon, Litmus, Gauntlet, Goldilocks, Maestro):
+const client = makeClient(process.env.CROO_SDK_KEY!);
+await runProvider(client, { serviceMatch, work, slaGuardMs: 60_000 });
+
+// Requester side (Maestro, Gauntlet):
+const { delivery } = await hire(client, { serviceId, requirement, maxPrice: 1.0 });
+```
+Set **`CROO_MOCK=true`** and every consumer runs fully offline — no wallet, no USDC, no WebSocket — which is how all five agents reproduce their flows in CI and local demos.
 
 ## 🧪 Testing & CI
 
