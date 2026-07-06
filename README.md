@@ -100,8 +100,9 @@ Aggregate of real CAP orders across every agent built on this SDK during the hac
 
 ### Installation
 1. Clone: `git clone https://github.com/edycutjong/croo-core.git`
-2. Install: `npm install`
-3. Build: `npm run build`
+2. Enter the directory: `cd croo-core`
+3. Install: `npm install`
+4. Build: `npm run build`
 
 ### Usage (consumed by every agent)
 ```ts
