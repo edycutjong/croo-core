@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * croo-core/hire — edge cases of the REAL (non-mock) requester flow.
  *
@@ -64,7 +65,7 @@ describe('hire — real flow edge cases', () => {
       }),
     };
 
-    await expect(hire(client, { serviceId: 's', requirement: {} })).rejects.toThrow(
+    await expect(hire(client as any, { serviceId: 's', requirement: {} })).rejects.toThrow(
       'without an order_id',
     );
 
@@ -77,7 +78,7 @@ describe('hire — real flow edge cases', () => {
       deliverableSchema: '{"score":92}',
     });
 
-    const result = await hire<{ score: number }>(client, { serviceId: 's', requirement: {} });
+    const result = await hire<{ score: number }>(client as any, { serviceId: 's', requirement: {} });
     expect(result.delivery).toEqual({ score: 92 });
   });
 
@@ -88,7 +89,7 @@ describe('hire — real flow edge cases', () => {
       deliverableSchema: 'not json',
     });
 
-    const result = await hire(client, { serviceId: 's', requirement: {} });
+    const result = await hire(client as any, { serviceId: 's', requirement: {} });
     expect(result.delivery).toBe('not json');
   });
 
@@ -99,7 +100,7 @@ describe('hire — real flow edge cases', () => {
       deliverableText: 'text fallback',
     });
 
-    const result = await hire(client, { serviceId: 's', requirement: {} });
+    const result = await hire(client as any, { serviceId: 's', requirement: {} });
     expect(result.delivery).toBe('text fallback');
   });
 
@@ -111,7 +112,7 @@ describe('hire — real flow edge cases', () => {
       { txHash: '0xonly' },
     );
 
-    const result = await hire(client, { serviceId: 's', requirement: {} });
+    const result = await hire(client as any, { serviceId: 's', requirement: {} });
     expect(result.txHash).toBe('0xonly');
     expect(result.amountPaid).toBeUndefined();
   });
@@ -134,7 +135,7 @@ describe('hire — real flow edge cases', () => {
       getDelivery: vi.fn(async () => ({ deliverableType: 'text', deliverableText: 'ok' })),
     };
 
-    const result = await hire(client, { serviceId: 's', requirement: {} });
+    const result = await hire(client as any, { serviceId: 's', requirement: {} });
     expect(result.orderId).toBe('ord_1'); // matched the 2nd event, ignored the 1st
   });
 
@@ -147,7 +148,7 @@ describe('hire — real flow edge cases', () => {
         negotiateOrder: vi.fn(async () => ({ negotiationId: 'neg_1' })), // never emits
       };
 
-      const promise = hire(client, { serviceId: 's', requirement: {} });
+      const promise = hire(client as any, { serviceId: 's', requirement: {} });
       const assertion = expect(promise).rejects.toThrow('Timeout waiting for order_created');
       await vi.advanceTimersByTimeAsync(30_001);
       await assertion;

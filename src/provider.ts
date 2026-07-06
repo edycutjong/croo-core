@@ -36,19 +36,49 @@ export async function runProvider<TOutput = unknown>(
     return mockProvider(handlers);
   }
 
-  const { serviceMatch, work, slaGuardMs = 60_000 } = handlers;
+  const { serviceMatch, payoutAddress, enableStateRecovery } = handlers;
 
   const stream = await client.connectWebSocket();
 
-  // ── Accept matching negotiations ──
-  stream.on(EventType.NegotiationCreated, async (event: Event) => {
-    if (!event.negotiation_id || !serviceMatch(event)) return;
-
+  // ── Active state recovery checks ──
+  if (enableStateRecovery && typeof client.listOrders === 'function') {
     try {
-      await client.acceptNegotiation(event.negotiation_id);
-      console.log(`[provider] Accepted negotiation ${event.negotiation_id}`);
+      console.log('[provider] Running active state recovery checks for paid orders...');
+      const recoveredOrders = await client.listOrders({ role: 'provider', status: 'paid' });
+      console.log(`[provider] Active state recovery found ${recoveredOrders.length} paid orders to process.`);
+      for (const order of recoveredOrders) {
+        processPaidOrder(client, order, handlers).catch((err) => {
+          console.error(`[provider] Recovery processing failed for order ${order.orderId}:`, err);
+        });
+      }
     } catch (err) {
-      console.error(`[provider] Failed to accept ${event.negotiation_id}:`, err);
+      console.error('[provider] Active state recovery failed:', err);
+    }
+  }
+
+  // ── Accept matching negotiations, reject others ──
+  stream.on(EventType.NegotiationCreated, async (event: Event) => {
+    if (!event.negotiation_id) return;
+
+    if (serviceMatch(event)) {
+      try {
+        if (payoutAddress) {
+          await client.acceptNegotiationWithFundAddress(event.negotiation_id, payoutAddress);
+          console.log(`[provider] Accepted negotiation ${event.negotiation_id} with fund address ${payoutAddress}`);
+        } else {
+          await client.acceptNegotiation(event.negotiation_id);
+          console.log(`[provider] Accepted negotiation ${event.negotiation_id}`);
+        }
+      } catch (err) {
+        console.error(`[provider] Failed to accept ${event.negotiation_id}:`, err);
+      }
+    } else {
+      try {
+        await client.rejectNegotiation(event.negotiation_id, 'Service mismatch / ignored by provider');
+        console.log(`[provider] Rejected unmatched negotiation ${event.negotiation_id}`);
+      } catch (err) {
+        console.error(`[provider] Failed to reject negotiation ${event.negotiation_id}:`, err);
+      }
     }
   });
 
@@ -56,34 +86,71 @@ export async function runProvider<TOutput = unknown>(
   stream.on(EventType.OrderPaid, async (event: Event) => {
     if (!event.order_id) return;
 
-    const order = await client.getOrder(event.order_id);
-    console.log(`[provider] Order paid: ${order.orderId}, starting work...`);
-
-    // SLA safety timer: reject before deadline to trigger clean refund
-    const slaTimer = scheduleSlaGuard(client, order, slaGuardMs);
-
     try {
-      const deliverable = await work(order);
-      await client.deliverOrder(order.orderId, toDeliverRequest(deliverable));
-      console.log(`[provider] Delivered order ${order.orderId}`);
+      const order = await client.getOrder(event.order_id);
+      await processPaidOrder(client, order, handlers);
     } catch (err) {
-      console.error(`[provider] Work failed for order ${order.orderId}:`, err);
-      try {
-        const safeReason = err instanceof Error && err.name === 'CrooSafeError' 
-          ? err.message 
-          : 'Provider internal error during execution';
-        await client.rejectOrder(order.orderId, safeReason);
-        console.log(`[provider] Rejected order ${order.orderId} (clean refund)`);
-      } catch (rejectErr) {
-        console.error(`[provider] Failed to reject order ${order.orderId}:`, rejectErr);
-      }
-    } finally {
-      clearTimeout(slaTimer);
+      console.error(`[provider] Failed to fetch or process order ${event.order_id}:`, err);
     }
+  });
+
+  // ── Handle WebSockets telemetry ──
+  stream.on(EventType.NegotiationRejected, (event: Event) => {
+    console.warn(`[provider/ws] Negotiation rejected: ${event.negotiation_id}`);
+    handlers.onNegotiationRejected?.(event);
+  });
+
+  stream.on(EventType.NegotiationExpired, (event: Event) => {
+    console.warn(`[provider/ws] Negotiation expired: ${event.negotiation_id}`);
+    handlers.onNegotiationExpired?.(event);
+  });
+
+  stream.on(EventType.OrderRejected, (event: Event) => {
+    console.warn(`[provider/ws] Order rejected: ${event.order_id}`);
+    handlers.onOrderRejected?.(event);
+  });
+
+  stream.on(EventType.OrderExpired, (event: Event) => {
+    console.warn(`[provider/ws] Order expired: ${event.order_id}`);
+    handlers.onOrderExpired?.(event);
   });
 
   console.log('[provider] WebSocket connected, listening for negotiations...');
   return stream;
+}
+
+/**
+ * Process a single paid order (shared by recovery and websocket flow).
+ */
+async function processPaidOrder<TOutput>(
+  client: AgentClient,
+  order: Order,
+  handlers: ProviderHandlers<TOutput>,
+) {
+  const { work, slaGuardMs = 60_000 } = handlers;
+  console.log(`[provider] Processing order: ${order.orderId}, starting work...`);
+
+  // SLA safety timer: reject before deadline to trigger clean refund
+  const slaTimer = scheduleSlaGuard(client, order, slaGuardMs);
+
+  try {
+    const deliverable = await work(order);
+    await client.deliverOrder(order.orderId, toDeliverRequest(deliverable));
+    console.log(`[provider] Delivered order ${order.orderId}`);
+  } catch (err) {
+    console.error(`[provider] Work failed for order ${order.orderId}:`, err);
+    try {
+      const safeReason = err instanceof Error && err.name === 'CrooSafeError' 
+        ? err.message 
+        : 'Provider internal error during execution';
+      await client.rejectOrder(order.orderId, safeReason);
+      console.log(`[provider] Rejected order ${order.orderId} (clean refund)`);
+    } catch (rejectErr) {
+      console.error(`[provider] Failed to reject order ${order.orderId}:`, rejectErr);
+    }
+  } finally {
+    clearTimeout(slaTimer);
+  }
 }
 
 /**

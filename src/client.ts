@@ -110,6 +110,9 @@ function requireSdk(): any {
         config: unknown; key: string;
         // Match the real SDK signature: uploadFile(fileName, body).
         async uploadFile(fileName: string, _body: Buffer) { return `https://mock.croo.network/files/${fileName}`; }
+        async acceptNegotiationWithFundAddress(negotiationId: string, payoutAddress: string) { return { negotiationId, payoutAddress }; }
+        async rejectNegotiation(negotiationId: string, reason: string) { return { negotiationId, reason }; }
+        async listOrders(_opts?: any) { return []; }
       },
     };
   }

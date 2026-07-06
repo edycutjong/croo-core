@@ -63,6 +63,24 @@ export interface ProviderHandlers<TOutput = unknown> {
 
   /** Milliseconds before the SLA deadline to fire a safety rejectOrder. Default 60_000 (60s). */
   slaGuardMs?: number;
+
+  /** Destination address to redirect earnings to. If set, acceptNegotiationWithFundAddress is used. */
+  payoutAddress?: string;
+
+  /** If true, checks for unpaid/paid-but-undelivered orders on startup. */
+  enableStateRecovery?: boolean;
+
+  /** Optional callback for negotiation rejections. */
+  onNegotiationRejected?: (event: Event) => void;
+
+  /** Optional callback for negotiation expiration/timeout. */
+  onNegotiationExpired?: (event: Event) => void;
+
+  /** Optional callback for order rejections. */
+  onOrderRejected?: (event: Event) => void;
+
+  /** Optional callback for order expiration/timeout. */
+  onOrderExpired?: (event: Event) => void;
 }
 
 /**

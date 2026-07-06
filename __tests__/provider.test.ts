@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runProvider } from '../src/provider.js';
 import { EventType } from '../src/types.js';
@@ -28,7 +29,7 @@ describe('runProvider', () => {
     const stream = { on: vi.fn() };
     const client = { connectWebSocket: vi.fn().mockResolvedValue(stream) };
 
-    await runProvider(client, {
+    await runProvider(client as any, {
       serviceMatch: () => true,
       work: async () => ({ type: 'text', data: 'ok' }),
     });
@@ -45,7 +46,7 @@ describe('runProvider', () => {
       acceptNegotiation: vi.fn().mockResolvedValue({}),
     };
 
-    await runProvider(client, {
+    await runProvider(client as any, {
       serviceMatch: (e) => e.service_id === 'my_service',
       work: async () => ({ type: 'text', data: 'ok' }),
     });
@@ -64,7 +65,7 @@ describe('runProvider', () => {
       acceptNegotiation: vi.fn(),
     };
 
-    await runProvider(client, {
+    await runProvider(client as any, {
       serviceMatch: (e) => e.service_id === 'my_service',
       work: async () => ({ type: 'text', data: 'ok' }),
     });
@@ -83,7 +84,7 @@ describe('runProvider', () => {
       acceptNegotiation: vi.fn(),
     };
 
-    await runProvider(client, {
+    await runProvider(client as any, {
       serviceMatch: () => true,
       work: async () => ({ type: 'text', data: 'ok' }),
     });
@@ -102,7 +103,7 @@ describe('runProvider', () => {
     };
     const workFn = vi.fn().mockResolvedValue({ type: 'text', data: 'done' });
 
-    await runProvider(client, { serviceMatch: () => true, work: workFn });
+    await runProvider(client as any, { serviceMatch: () => true, work: workFn });
 
     await handlerFor(stream, EventType.OrderPaid)({ order_id: 'ord_1' });
 
@@ -122,7 +123,7 @@ describe('runProvider', () => {
       deliverOrder: vi.fn().mockResolvedValue({}),
     };
 
-    await runProvider(client, {
+    await runProvider(client as any, {
       serviceMatch: () => true,
       work: async () => ({ type: 'schema', data: { score: 92 } }),
     });
@@ -141,7 +142,7 @@ describe('runProvider', () => {
       getOrder: vi.fn(),
     };
 
-    await runProvider(client, {
+    await runProvider(client as any, {
       serviceMatch: () => true,
       work: async () => ({ type: 'text', data: 'x' }),
     });
@@ -159,7 +160,7 @@ describe('runProvider', () => {
       rejectOrder: vi.fn().mockResolvedValue(undefined),
     };
 
-    await runProvider(client, {
+    await runProvider(client as any, {
       serviceMatch: () => true,
       work: vi.fn().mockRejectedValue(new Error('Work error')),
     });
@@ -177,7 +178,7 @@ describe('runProvider', () => {
       rejectOrder: vi.fn().mockRejectedValue(new Error('reject failed too')),
     };
 
-    await runProvider(client, {
+    await runProvider(client as any, {
       serviceMatch: () => true,
       work: vi.fn().mockRejectedValue(new Error('Work error')),
     });
@@ -197,7 +198,7 @@ describe('runProvider', () => {
       rejectOrder: vi.fn().mockResolvedValue(undefined),
     };
 
-    await runProvider(client, {
+    await runProvider(client as any, {
       serviceMatch: () => true,
       work: vi.fn().mockRejectedValue(safe),
     });
@@ -213,7 +214,7 @@ describe('runProvider', () => {
       acceptNegotiation: vi.fn().mockRejectedValue(new Error('accept failed')),
     };
 
-    await runProvider(client, {
+    await runProvider(client as any, {
       serviceMatch: () => true,
       work: async () => ({ type: 'text', data: 'ok' }),
     });
@@ -241,7 +242,7 @@ describe('runProvider', () => {
       .fn()
       .mockImplementation(() => new Promise((r) => setTimeout(r, 16 * 60 * 1000)));
 
-    await runProvider(client, { serviceMatch: () => true, work: workFn, slaGuardMs: 60_000 });
+    await runProvider(client as any, { serviceMatch: () => true, work: workFn, slaGuardMs: 60_000 });
 
     handlerFor(stream, EventType.OrderPaid)({ order_id: 'ord_3' }); // don't await — work hangs
 
@@ -269,7 +270,7 @@ describe('runProvider', () => {
       .fn()
       .mockImplementation(() => new Promise((r) => setTimeout(r, 16 * 60 * 1000)));
 
-    await runProvider(client, { serviceMatch: () => true, work: workFn, slaGuardMs: 60_000 });
+    await runProvider(client as any, { serviceMatch: () => true, work: workFn, slaGuardMs: 60_000 });
 
     handlerFor(stream, EventType.OrderPaid)({ order_id: 'ord_4' });
     await vi.advanceTimersByTimeAsync(14.5 * 60 * 1000);
@@ -277,12 +278,186 @@ describe('runProvider', () => {
     expect(client.rejectOrder).toHaveBeenCalledWith('ord_4', expect.stringContaining('SLA guard'));
   });
 
+  it('rejects unmatched negotiations', async () => {
+    const stream = { on: vi.fn() };
+    const client = {
+      connectWebSocket: vi.fn().mockResolvedValue(stream),
+      rejectNegotiation: vi.fn().mockResolvedValue({}),
+    };
+
+    await runProvider(client as any, {
+      serviceMatch: (e) => e.service_id === 'my_service',
+      work: async () => ({ type: 'text', data: 'ok' }),
+    });
+
+    await handlerFor(stream, EventType.NegotiationCreated)({
+      negotiation_id: 'neg_unmatched',
+      service_id: 'other_service',
+    });
+    expect(client.rejectNegotiation).toHaveBeenCalledWith('neg_unmatched', expect.any(String));
+  });
+
+  it('accepts negotiation with fund address when payoutAddress is set', async () => {
+    const stream = { on: vi.fn() };
+    const client = {
+      connectWebSocket: vi.fn().mockResolvedValue(stream),
+      acceptNegotiationWithFundAddress: vi.fn().mockResolvedValue({}),
+    };
+
+    await runProvider(client as any, {
+      serviceMatch: () => true,
+      payoutAddress: '0x1234567890123456789012345678901234567890',
+      work: async () => ({ type: 'text', data: 'ok' }),
+    });
+
+    await handlerFor(stream, EventType.NegotiationCreated)({
+      negotiation_id: 'neg_payout',
+      service_id: 'any',
+    });
+    expect(client.acceptNegotiationWithFundAddress).toHaveBeenCalledWith('neg_payout', '0x1234567890123456789012345678901234567890');
+  });
+
+  it('runs active state recovery on startup if enableStateRecovery is true', async () => {
+    const stream = { on: vi.fn() };
+    const order = { orderId: 'ord_rec', negotiationId: 'neg_rec', status: 'paid' };
+    const client = {
+      connectWebSocket: vi.fn().mockResolvedValue(stream),
+      listOrders: vi.fn().mockResolvedValue([order]),
+      deliverOrder: vi.fn().mockResolvedValue({}),
+    };
+    const workFn = vi.fn().mockResolvedValue({ type: 'text', data: 'recovered' });
+
+    await runProvider(client as any, {
+      serviceMatch: () => true,
+      enableStateRecovery: true,
+      work: workFn,
+    });
+
+    // Advance Vitest fake timers to process the background recovery promise
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(client.listOrders).toHaveBeenCalledWith({ role: 'provider', status: 'paid' });
+    expect(workFn).toHaveBeenCalledWith(order);
+    expect(client.deliverOrder).toHaveBeenCalledWith('ord_rec', {
+      deliverableType: 'text',
+      deliverableText: 'recovered',
+    });
+  });
+
+  it('sets up WebSocket handlers for rejections and expirations', async () => {
+    const stream = { on: vi.fn() };
+    const client = {
+      connectWebSocket: vi.fn().mockResolvedValue(stream),
+    };
+    const handlers = {
+      serviceMatch: () => true,
+      work: async () => ({ type: 'text' as const, data: 'ok' }),
+      onNegotiationRejected: vi.fn(),
+      onNegotiationExpired: vi.fn(),
+      onOrderRejected: vi.fn(),
+      onOrderExpired: vi.fn(),
+    };
+
+    await runProvider(client as any, handlers);
+
+    expect(stream.on).toHaveBeenCalledWith(EventType.NegotiationRejected, expect.any(Function));
+    expect(stream.on).toHaveBeenCalledWith(EventType.NegotiationExpired, expect.any(Function));
+    expect(stream.on).toHaveBeenCalledWith(EventType.OrderRejected, expect.any(Function));
+    expect(stream.on).toHaveBeenCalledWith(EventType.OrderExpired, expect.any(Function));
+
+    // Fire handlers
+    const negRejectedEvent = { negotiation_id: 'neg_rej' };
+    await handlerFor(stream, EventType.NegotiationRejected)(negRejectedEvent);
+    expect(handlers.onNegotiationRejected).toHaveBeenCalledWith(negRejectedEvent);
+
+    const negExpiredEvent = { negotiation_id: 'neg_exp' };
+    await handlerFor(stream, EventType.NegotiationExpired)(negExpiredEvent);
+    expect(handlers.onNegotiationExpired).toHaveBeenCalledWith(negExpiredEvent);
+
+    const orderRejectedEvent = { order_id: 'ord_rej' };
+    await handlerFor(stream, EventType.OrderRejected)(orderRejectedEvent);
+    expect(handlers.onOrderRejected).toHaveBeenCalledWith(orderRejectedEvent);
+
+    const orderExpiredEvent = { order_id: 'ord_exp' };
+    await handlerFor(stream, EventType.OrderExpired)(orderExpiredEvent);
+    expect(handlers.onOrderExpired).toHaveBeenCalledWith(orderExpiredEvent);
+  });
+
+  it('logs error when active state recovery listOrders fails', async () => {
+    const stream = { on: vi.fn() };
+    const client = {
+      connectWebSocket: vi.fn().mockResolvedValue(stream),
+      listOrders: vi.fn().mockRejectedValue(new Error('listOrders error')),
+    };
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await runProvider(client as any, {
+      serviceMatch: () => true,
+      enableStateRecovery: true,
+      work: async () => ({ type: 'text', data: 'ok' }),
+    });
+
+    await vi.advanceTimersByTimeAsync(10);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[provider] Active state recovery failed:'),
+      expect.any(Error),
+    );
+  });
+
+  it('logs error when active state recovery processing of a paid order fails', async () => {
+    const stream = { on: vi.fn() };
+    const order = {
+      orderId: 'ord_rec_fail',
+      status: 'paid',
+      get slaDeadline() {
+        throw new Error('slaDeadline error');
+      },
+    };
+    const client = {
+      connectWebSocket: vi.fn().mockResolvedValue(stream),
+      listOrders: vi.fn().mockResolvedValue([order]),
+    };
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await runProvider(client as any, {
+      serviceMatch: () => true,
+      enableStateRecovery: true,
+      work: async () => ({ type: 'text', data: 'ok' }),
+    });
+
+    await vi.advanceTimersByTimeAsync(10);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[provider] Recovery processing failed for order ord_rec_fail:'),
+      expect.any(Error),
+    );
+  });
+
+  it('logs error when OrderPaid event handler fails to fetch order details', async () => {
+    const stream = { on: vi.fn() };
+    const client = {
+      connectWebSocket: vi.fn().mockResolvedValue(stream),
+      getOrder: vi.fn().mockRejectedValue(new Error('getOrder error')),
+    };
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await runProvider(client as any, {
+      serviceMatch: () => true,
+      work: async () => ({ type: 'text', data: 'ok' }),
+    });
+
+    await handlerFor(stream, EventType.OrderPaid)({ order_id: 'ord_get_fail' });
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[provider] Failed to fetch or process order ord_get_fail:'),
+      expect.any(Error),
+    );
+  });
+
   it('returns a mock stream when CROO_MOCK=true (never opens a real WebSocket)', async () => {
     process.env.CROO_MOCK = 'true';
     const connectWebSocket = vi.fn();
 
     const stream = await runProvider(
-      { connectWebSocket },
+      { connectWebSocket } as any,
       { serviceMatch: () => true, work: async () => ({ type: 'text', data: 'ok' }) },
     );
 

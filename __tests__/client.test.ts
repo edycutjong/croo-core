@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * croo-core/client — Tests for the CROO client factory.
  */
@@ -22,8 +23,7 @@ describe('makeClient', () => {
 
   it('throws on undefined SDK key', async () => {
     const { makeClient } = await import('../src/client.js');
-    // @ts-expect-error — intentionally passing undefined for testing
-    expect(() => makeClient(undefined)).toThrow('Invalid CROO SDK key');
+    expect(() => makeClient(undefined as any)).toThrow('Invalid CROO SDK key');
   });
 
   it('exports DEFAULT_CONFIG with correct values', async () => {
@@ -57,7 +57,7 @@ describe('makeClient — mock mode (CROO_MOCK=true)', () => {
 
   it('mock uploadFile returns a deterministic mock URL (SDK signature: fileName, body)', async () => {
     const { makeClient } = await import('../src/client.js');
-    const client = makeClient('croo_sk_mock') as {
+    const client = makeClient('croo_sk_mock') as unknown as {
       uploadFile: (fileName: string, body: Buffer) => Promise<string>;
     };
     await expect(client.uploadFile('report.pdf', Buffer.from('x'))).resolves.toBe(
@@ -67,7 +67,7 @@ describe('makeClient — mock mode (CROO_MOCK=true)', () => {
 
   it('merges config overrides into the SDK config', async () => {
     const { makeClient } = await import('../src/client.js');
-    const client = makeClient('croo_sk_mock', { rpcURL: 'https://custom.rpc' }) as {
+    const client = makeClient('croo_sk_mock', { rpcURL: 'https://custom.rpc' }) as unknown as {
       config: { baseURL: string; rpcURL?: string };
     };
     expect(client.config.baseURL).toBe('https://api.croo.network');
@@ -76,7 +76,7 @@ describe('makeClient — mock mode (CROO_MOCK=true)', () => {
 
   it('omits rpcURL from the SDK config when it is overridden to undefined', async () => {
     const { makeClient } = await import('../src/client.js');
-    const client = makeClient('croo_sk_mock', { rpcURL: undefined }) as {
+    const client = makeClient('croo_sk_mock', { rpcURL: undefined }) as unknown as {
       config: { rpcURL?: string };
     };
     expect(client.config.rpcURL).toBeUndefined();
@@ -138,7 +138,7 @@ describe('makeClient — shared WebSocket stream (getSharedStream / disconnect)'
 
   async function freshClient() {
     const { makeClient } = await import('../src/client.js');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     return makeClient('croo_sk_mock') as any;
   }
 
@@ -234,3 +234,27 @@ describe('makeClient — shared WebSocket stream (getSharedStream / disconnect)'
     expect(() => client.disconnect()).not.toThrow();
   });
 });
+
+describe('MockAgentClient methods', () => {
+  it('implements acceptNegotiationWithFundAddress, rejectNegotiation, and listOrders', async () => {
+    const { makeClient } = await import('../src/client.js');
+    const originalEnv = process.env.CROO_MOCK;
+    process.env.CROO_MOCK = 'true';
+    try {
+      const client = makeClient('croo_sk_mock') as any;
+      await expect(client.acceptNegotiationWithFundAddress('neg_1', '0x123')).resolves.toEqual({
+        negotiationId: 'neg_1',
+        payoutAddress: '0x123',
+      });
+      await expect(client.rejectNegotiation('neg_2', 'reason')).resolves.toEqual({
+        negotiationId: 'neg_2',
+        reason: 'reason',
+      });
+      await expect(client.listOrders()).resolves.toEqual([]);
+    } finally {
+      if (originalEnv === undefined) delete process.env.CROO_MOCK;
+      else process.env.CROO_MOCK = originalEnv;
+    }
+  });
+});
+

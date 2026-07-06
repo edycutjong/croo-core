@@ -80,11 +80,10 @@ export async function hire<T = unknown>(
 
     const payResult = await client.payOrder(orderId);
 
-    // Step 4: Wait for order_completed (provider delivered)
-    await waitForEvent(
+    // Step 4: Wait for order_completed (provider delivered) or failures (rejected/expired)
+    await waitForOrderCompletionOrFailure(
       stream,
-      EventType.OrderCompleted,
-      (e) => e.order_id === orderId,
+      orderId,
       300_000, // 5min timeout for delivery
     );
 
@@ -109,6 +108,63 @@ export async function hire<T = unknown>(
   } finally {
     // Stream is now managed by the client as a singleton
   }
+}
+
+/**
+ * Wait for an order to complete, or reject immediately if it gets rejected or expired.
+ */
+function waitForOrderCompletionOrFailure(
+  stream: EventStream,
+  orderId: string,
+  timeoutMs: number,
+): Promise<Event> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Timeout waiting for order ${orderId} completion after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    const onCompleted = (e: Event) => {
+      if (e.order_id === orderId) {
+        clearTimeout(timer);
+        cleanup();
+        resolve(e);
+      }
+    };
+
+    const onRejected = (e: Event) => {
+      if (e.order_id === orderId) {
+        clearTimeout(timer);
+        cleanup();
+        reject(new Error('ORDER_REJECTED'));
+      }
+    };
+
+    const onExpired = (e: Event) => {
+      if (e.order_id === orderId) {
+        clearTimeout(timer);
+        cleanup();
+        reject(new Error('ORDER_EXPIRED'));
+      }
+    };
+
+    stream.on(EventType.OrderCompleted, onCompleted);
+    stream.on(EventType.OrderRejected, onRejected);
+    stream.on(EventType.OrderExpired, onExpired);
+
+    function cleanup() {
+      const s = stream as any;
+      if (typeof s.off === 'function') {
+        s.off(EventType.OrderCompleted, onCompleted);
+        s.off(EventType.OrderRejected, onRejected);
+        s.off(EventType.OrderExpired, onExpired);
+      } else if (typeof s.removeListener === 'function') {
+        s.removeListener(EventType.OrderCompleted, onCompleted);
+        s.removeListener(EventType.OrderRejected, onRejected);
+        s.removeListener(EventType.OrderExpired, onExpired);
+      }
+    }
+  });
 }
 
 /**

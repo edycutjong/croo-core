@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { hire } from '../src/hire.js';
 
@@ -54,7 +55,7 @@ describe('hire (live mode)', () => {
     const stream = new FakeStream();
     const client = happyClient(stream);
 
-    const result = await hire(client, { serviceId: 'svc_1', requirement: { test: true } });
+    const result = await hire(client as any, { serviceId: 'svc_1', requirement: { test: true } });
 
     expect(client.negotiateOrder).toHaveBeenCalledWith({
       serviceId: 'svc_1',
@@ -72,7 +73,7 @@ describe('hire (live mode)', () => {
     const stream = new FakeStream();
     const trace = vi.fn();
 
-    await hire(happyClient(stream), { serviceId: 'svc_1', requirement: {} }, trace);
+    await hire(happyClient(stream) as any, { serviceId: 'svc_1', requirement: {} }, trace);
 
     expect(trace).toHaveBeenCalledTimes(3);
     expect(trace).toHaveBeenCalledWith(expect.objectContaining({ type: 'hire_start' }));
@@ -86,7 +87,7 @@ describe('hire (live mode)', () => {
 
   it('does not throw when no trace emitter is provided', async () => {
     const stream = new FakeStream();
-    const result = await hire(happyClient(stream), { serviceId: 'svc_1', requirement: {} });
+    const result = await hire(happyClient(stream) as any, { serviceId: 'svc_1', requirement: {} });
     expect(result.orderId).toBe('ord_1');
   });
 
@@ -97,7 +98,7 @@ describe('hire (live mode)', () => {
       negotiateOrder: vi.fn().mockRejectedValue(new Error('Negotiation denied')),
     };
 
-    await expect(hire(client, { serviceId: 'svc_1', requirement: {} })).rejects.toThrow(
+    await expect(hire(client as any, { serviceId: 'svc_1', requirement: {} })).rejects.toThrow(
       'Negotiation denied',
     );
 
@@ -105,26 +106,102 @@ describe('hire (live mode)', () => {
 
   it('cleans up listeners via off() when the stream supports it', async () => {
     const stream = new FakeStream();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     (stream as any).off = vi.fn((type: string, h: (e: Record<string, unknown>) => void) => {
       stream.handlers[type] = (stream.handlers[type] ?? []).filter((x) => x !== h);
     });
 
-    await hire(happyClient(stream), { serviceId: 'svc_1', requirement: {} });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await hire(happyClient(stream) as any, { serviceId: 'svc_1', requirement: {} });
+     
     expect((stream as any).off).toHaveBeenCalled();
   });
 
   it('cleans up listeners via removeListener() when off() is unavailable', async () => {
     const stream = new FakeStream();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     (stream as any).removeListener = vi.fn((type: string, h: (e: Record<string, unknown>) => void) => {
       stream.handlers[type] = (stream.handlers[type] ?? []).filter((x) => x !== h);
     });
 
-    await hire(happyClient(stream), { serviceId: 'svc_1', requirement: {} });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await hire(happyClient(stream) as any, { serviceId: 'svc_1', requirement: {} });
+     
     expect((stream as any).removeListener).toHaveBeenCalled();
+  });
+
+  it('throws ORDER_REJECTED when the order is rejected', async () => {
+    const stream = new FakeStream();
+    const client = {
+      getSharedStream: vi.fn(async () => stream),
+      negotiateOrder: vi.fn(async () => {
+        setImmediate(() =>
+          stream.emit('order_created', { negotiation_id: 'neg_1', order_id: 'ord_1' }),
+        );
+        return { negotiationId: 'neg_1' };
+      }),
+      payOrder: vi.fn(async (orderId: string) => {
+        setImmediate(() => stream.emit('order_rejected', { order_id: orderId }));
+        return { txHash: 'tx_hash_1', order: { price: '0.05' } };
+      }),
+      getDelivery: vi.fn(),
+    };
+
+    await expect(hire(client as any, { serviceId: 'svc_1', requirement: {} })).rejects.toThrow(
+      'ORDER_REJECTED',
+    );
+  });
+
+  it('throws ORDER_EXPIRED when the order is expired', async () => {
+    const stream = new FakeStream();
+    const client = {
+      getSharedStream: vi.fn(async () => stream),
+      negotiateOrder: vi.fn(async () => {
+        setImmediate(() =>
+          stream.emit('order_created', { negotiation_id: 'neg_1', order_id: 'ord_1' }),
+        );
+        return { negotiationId: 'neg_1' };
+      }),
+      payOrder: vi.fn(async (orderId: string) => {
+        setImmediate(() => stream.emit('order_expired', { order_id: orderId }));
+        return { txHash: 'tx_hash_1', order: { price: '0.05' } };
+      }),
+      getDelivery: vi.fn(),
+    };
+
+    await expect(hire(client as any, { serviceId: 'svc_1', requirement: {} })).rejects.toThrow(
+      'ORDER_EXPIRED',
+    );
+  });
+
+  it('rejects with timeout when no event is received within the timeout', async () => {
+    vi.useFakeTimers();
+    const stream = new FakeStream();
+    const client = {
+      getSharedStream: vi.fn(async () => stream),
+      negotiateOrder: vi.fn(async () => {
+        setImmediate(() =>
+          stream.emit('order_created', { negotiation_id: 'neg_1', order_id: 'ord_1' }),
+        );
+        return { negotiationId: 'neg_1' };
+      }),
+      payOrder: vi.fn(async () => {
+        return { txHash: 'tx_hash_1', order: { price: '0.05' } };
+      }),
+      getDelivery: vi.fn(),
+    };
+
+    const hirePromise = hire(client as any, { serviceId: 'svc_1', requirement: {} });
+    
+    // First, let negotiation run and order_created emit
+    await vi.advanceTimersByTimeAsync(10);
+
+    // Create the assertion promise first to attach the catch handler
+    const assertionPromise = expect(hirePromise).rejects.toThrow('Timeout waiting for order ord_1 completion');
+
+    // Then advance time to trigger timeout
+    await vi.advanceTimersByTimeAsync(300_000);
+
+    await assertionPromise;
+    vi.useRealTimers();
   });
 });
 
@@ -145,7 +222,7 @@ describe('hire (mock mode)', () => {
   it('delegates to mockHire when CROO_MOCK=true (no client calls)', async () => {
     const client = { negotiateOrder: vi.fn(), connectWebSocket: vi.fn() };
 
-    const result = await hire(client, { serviceId: 'svc_research_x', requirement: {} });
+    const result = await hire(client as any, { serviceId: 'svc_research_x', requirement: {} });
 
     expect(result.orderId).toMatch(/^mock_order_/);
     expect(result.txHash).toContain('0xmock_');
