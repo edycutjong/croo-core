@@ -27,30 +27,37 @@ Developing autonomous agents that securely communicate and transact on-chain req
 - 🔌 **Unified Interface:** A single, consistent API for interacting with the entire Croo ecosystem.
 - 🔐 **Secure Execution:** Built-in support for wallet connections and cryptographic verification.
 - ⚡ **A2A Networking:** Seamless peer-to-peer communication between distinct AI agents.
+- 🔄 **Active State Recovery:** Automatically scans and resumes in-flight paid orders on boot, ensuring no lost actions.
+- ❌ **Active Rejections:** Instantly rejects unmatched negotiations instead of letting them silently time out.
+- 💼 **Dynamic Payout Wallets:** Supports redirecting incoming fee revenue directly to custom wallet destinations.
+- 🚀 **Fast Failover Race:** Requester-side races order completion against rejection/expiration events for immediate error cascading.
 
 ## 🌌 The Constellation Ecosystem
 
-This core SDK powers a suite of 5 specialized reference agents that form a secure, autonomous ecosystem. For a deep-dive into how these agents compose to form orchestrated, quality-gated workflows, read the [**CROO Constellation Portfolio**](PORTFOLIO.md).
+This core SDK powers a suite of 6 specialized reference agents that form a secure, autonomous ecosystem. For a deep-dive into how these agents compose to form orchestrated, quality-gated workflows, read the [**CROO Constellation Portfolio**](PORTFOLIO.md).
 
+- **Worker:** Research provider (top of the pipeline)
 - **Summon:** Human-in-the-loop sign-off agent
 - **Maestro:** Callable multi-agent orchestrator
 - **Litmus:** Output-grading quality gate
 - **Gauntlet:** Paid adversarial certification agent
 - **Goldilocks:** Data-backed pricing oracle
 
-Every arrow below is a real CAP order settled in USDC on Base — `croo-core` provides the `hire()` (requester) and `runProvider()` (provider) primitives, plus escrow-safe SLA refunds and a deterministic mock mode shared by all five agents.
+Every arrow below is a real CAP order settled in USDC on Base — `croo-core` provides the `hire()` (requester) and `runProvider()` (provider) primitives, plus escrow-safe SLA refunds and a deterministic mock mode shared by all six agents.
 
 ```mermaid
 graph LR
     User([Any Agent / User]) -->|hires| M[Maestro 🎼]
-    M -->|research| W[Worker]
+    M -->|research| W[Worker 🛠️]
     M -->|grade ×2| L[Litmus 🧪]
     M -->|human sign-off| S[Summon 👤]
     G[Gauntlet 🧤] -.->|certifies| M
+    G -.->|certifies| W
     G -.->|certifies| L
     G -.->|certifies| S
     GL[Goldilocks 🧈] -->|prices| Store[(Agent Store)]
-    M -.->|uses| C{{croo-core ⚙️}}
+    W -.->|uses| C{{croo-core ⚙️}}
+    M -.->|uses| C
     L -.->|uses| C
     S -.->|uses| C
     G -.->|uses| C
@@ -67,6 +74,7 @@ Aggregate of real CAP orders across every agent built on this SDK during the hac
 
 | Agent | Real CAP orders | A2A counterparties |
 |-------|-----------------|--------------------|
+| Worker 🛠️ | _0_ | Maestro |
 | Maestro 🎼 | _0_ | Worker, Litmus, Summon |
 | Gauntlet 🧤 | _0_ | targets, Maestro, Litmus, Summon |
 | Summon 👤 | _0_ | Maestro, external bots |
@@ -127,7 +135,7 @@ make security-scan # npm audit + license check
 | Layer | Tool | Status |
 |---|---|---|
 | Code Quality | ESLint + TypeScript | ✅ |
-| Unit Testing | Vitest | ✅ |
+| Unit Testing | Vitest (73 tests) | ✅ |
 | Security (SAST) | CodeQL | ✅ |
 | Security (SCA) | Dependabot + npm audit | ✅ |
 | Secret Scanning | TruffleHog | ✅ |

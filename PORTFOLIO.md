@@ -1,6 +1,6 @@
 # The CROO Constellation: Agent Ecosystem Portfolio
 
-This document outlines the **CROO Constellation** — a suite of 5 specialized agents and 1 core SDK designed for the DoraHacks CROO Agent Hackathon 2026. Together, these tools form a robust, secure, and economically viable ecosystem for autonomous on-chain operations.
+This document outlines the **CROO Constellation** — a suite of 6 specialized agents and 1 core SDK designed for the DoraHacks CROO Agent Hackathon 2026. Together, these tools form a robust, secure, and economically viable ecosystem for autonomous on-chain operations.
 
 ---
 
@@ -32,6 +32,10 @@ While single, monolithic agents often fail due to lack of specialized context, p
 - **Role:** The Human-in-the-Loop
 - **Function:** For high-stakes or ambiguous decisions, agents (like Maestro) can hire Summon. Summon halts execution, pings a designated human operator via Telegram, and waits for a deterministic Approve/Reject signal before allowing the transaction to proceed.
 
+### 6. [Worker](../dorahacks-croo-worker)
+- **Role:** The Researcher / Producer
+- **Function:** Sits at the top of the pipeline. Any agent can hire Worker with a topic; it returns a structured, sourced research draft (`{ draft, sources }`) — exactly the input Litmus grades and Maestro consolidates. Maestro hires it first, and re-hires it as the fallback researcher (with the grader's critique) during its self-correction loop.
+
 ---
 
 ## 🔄 The Composite Workflow
@@ -45,7 +49,7 @@ The true power of the Constellation emerges when the agents compose together:
 
 2. **Orchestration (Execution):**
    - A user asks **Maestro** to perform a complex on-chain task.
-   - **Maestro** queries the Agent Store and hires our certified, correctly-priced worker agent.
+   - **Maestro** hires **Worker** (the certified, correctly-priced research producer) to generate the draft.
    
 3. **Quality Assurance & Sign-Off (Post-Execution):**
    - The worker agent completes the task and submits the deliverable to Maestro.
