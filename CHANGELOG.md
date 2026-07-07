@@ -1,3 +1,10 @@
+## [0.4.1](https://github.com/edycutjong/croo-core/compare/v0.4.0...v0.4.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* **hire:** REST-poll order lifecycle + shared provider stream + USDC amountPaid ([1646240](https://github.com/edycutjong/croo-core/commit/16462405fcca0fd1d978c84fcbcae66ba554c1d5))
+
 # [0.4.0](https://github.com/edycutjong/croo-core/compare/v0.3.0...v0.4.0) (2026-07-06)
 
 
