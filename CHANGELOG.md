@@ -1,3 +1,10 @@
+# [0.5.0](https://github.com/edycutjong/croo-core/compare/v0.4.1...v0.5.0) (2026-07-07)
+
+
+### Features
+
+* **docs:** swap core icon to gear glyph ([806953a](https://github.com/edycutjong/croo-core/commit/806953a07f1e985249e41b04786f0c5402da4b97))
+
 ## [0.4.1](https://github.com/edycutjong/croo-core/compare/v0.4.0...v0.4.1) (2026-07-07)
 
 
