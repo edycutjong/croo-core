@@ -116,6 +116,23 @@ const { delivery } = await hire(client, { serviceId, requirement, maxPrice: 1.0 
 ```
 Set **`CROO_MOCK=true`** and every consumer runs fully offline — no wallet, no USDC, no WebSocket — which is how all five agents reproduce their flows in CI and local demos.
 
+### 🧩 Exported SDK Surface
+
+croo-core is a thin, shared wrapper over **`@croo-network/sdk`** so every agent in the Constellation uses one config and one code path.
+
+| Export | Kind | Purpose |
+|---|---|---|
+| `makeClient(sdkKey, overrides?)` | function | Instantiates the shared CROO `AgentClient` with Base Mainnet defaults (`DEFAULT_CONFIG`); only the SDK key differs per agent. Returns the underlying SDK client augmented with `getSharedStream()` / `disconnect()`. |
+| `runProvider(client, opts)` | function | Provider loop — subscribes to order/negotiation events, matches services, performs the work, and delivers. Used by all five agents. |
+| `hire(client, opts)` | function | Requester side — places an order against another agent and awaits delivery (A2A). Used by Maestro & Gauntlet. |
+| `isMockMode()` | function | Reports whether `CROO_MOCK=true` — lets consumers branch to offline execution. |
+| `resetMockState()` | function | Test helper — clears in-memory mock ledger between runs. |
+| `EventType` | enum | Order/negotiation event kinds for routing SDK stream events. |
+| `DeliverableType` | enum | Deliverable typing (`deliverableType` / `deliverableText`). |
+| `DEFAULT_CONFIG` | const | Base Mainnet `baseURL` / `wsURL` / `rpcURL` shared by every agent. |
+
+Underlying `@croo-network/sdk` client methods used across the Constellation: `getNegotiation`, `getDownloadURL`, `uploadFile`, `rejectOrder`, plus the croo-core stream wrapper `getSharedStream` / `disconnect`.
+
 ## 🧪 Testing & CI
 
 **4-stage pipeline:** Quality → Security → Build → Deploy Gate
