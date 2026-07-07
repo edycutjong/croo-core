@@ -2,37 +2,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { hire } from '../src/hire.js';
 
-/** Minimal fake EventStream matching the SDK's on/close surface. */
-class FakeStream {
-  handlers: Record<string, ((e: Record<string, unknown>) => void)[]> = {};
-  closed = false;
-  on(type: string, h: (e: Record<string, unknown>) => void) {
-    (this.handlers[type] ??= []).push(h);
-  }
-  emit(type: string, e: Record<string, unknown>) {
-    (this.handlers[type] ?? []).forEach((h) => h(e));
-  }
-  onAny() {}
-  err() {
-    return null;
-  }
-  close() {
-    this.closed = true;
-  }
-}
-
-/** A client whose negotiate/pay drive the stream through the happy path. */
-function happyClient(stream: FakeStream) {
+/**
+ * A client whose negotiate/pay/poll methods drive the REST-polling happy path.
+ * hire() polls getNegotiation()/getOrder() instead of listening for WebSocket
+ * events, because the CROO backend does not reliably push order lifecycle
+ * events to the requester's socket.
+ */
+function happyClient() {
+  let paid = false;
   return {
-    getSharedStream: vi.fn(async () => stream),
-    negotiateOrder: vi.fn(async () => {
-      setImmediate(() =>
-        stream.emit('order_created', { negotiation_id: 'neg_1', order_id: 'ord_1' }),
-      );
-      return { negotiationId: 'neg_1' };
-    }),
-    payOrder: vi.fn(async (orderId: string) => {
-      setImmediate(() => stream.emit('order_completed', { order_id: orderId }));
+    negotiateOrder: vi.fn(async () => ({ negotiationId: 'neg_1' })),
+    getNegotiation: vi.fn(async () => ({ status: 'accepted', orderId: 'ord_1' })),
+    // 'created' (payable) before payment, 'completed' after.
+    getOrder: vi.fn(async () => ({ status: paid ? 'completed' : 'created' })),
+    payOrder: vi.fn(async () => {
+      paid = true;
       return { txHash: 'tx_hash_1', order: { price: '0.05' } };
     }),
     getDelivery: vi.fn(async () => ({ deliverableType: 'text', deliverableText: 'success' })),
@@ -52,8 +36,7 @@ describe('hire (live mode)', () => {
   });
 
   it('completes the full hire flow: negotiate → pay → deliver', async () => {
-    const stream = new FakeStream();
-    const client = happyClient(stream);
+    const client = happyClient();
 
     const result = await hire(client as any, { serviceId: 'svc_1', requirement: { test: true } });
 
@@ -61,19 +44,19 @@ describe('hire (live mode)', () => {
       serviceId: 'svc_1',
       requirements: JSON.stringify({ test: true }),
     });
+    expect(client.getNegotiation).toHaveBeenCalledWith('neg_1');
     expect(client.payOrder).toHaveBeenCalledWith('ord_1');
+    expect(client.getOrder).toHaveBeenCalledWith('ord_1');
     expect(result.orderId).toBe('ord_1');
     expect(result.txHash).toBe('tx_hash_1');
     expect(result.amountPaid).toBe('0.05');
     expect(result.delivery).toBe('success');
-
   });
 
   it('emits trace events during the live flow', async () => {
-    const stream = new FakeStream();
     const trace = vi.fn();
 
-    await hire(happyClient(stream) as any, { serviceId: 'svc_1', requirement: {} }, trace);
+    await hire(happyClient() as any, { serviceId: 'svc_1', requirement: {} }, trace);
 
     expect(trace).toHaveBeenCalledTimes(3);
     expect(trace).toHaveBeenCalledWith(expect.objectContaining({ type: 'hire_start' }));
@@ -86,60 +69,28 @@ describe('hire (live mode)', () => {
   });
 
   it('does not throw when no trace emitter is provided', async () => {
-    const stream = new FakeStream();
-    const result = await hire(happyClient(stream) as any, { serviceId: 'svc_1', requirement: {} });
+    const result = await hire(happyClient() as any, { serviceId: 'svc_1', requirement: {} });
     expect(result.orderId).toBe('ord_1');
   });
 
-  it('rejects and closes the stream if negotiation fails', async () => {
-    const stream = new FakeStream();
+  it('rejects if negotiation fails', async () => {
     const client = {
-      getSharedStream: vi.fn(async () => stream),
       negotiateOrder: vi.fn().mockRejectedValue(new Error('Negotiation denied')),
     };
 
     await expect(hire(client as any, { serviceId: 'svc_1', requirement: {} })).rejects.toThrow(
       'Negotiation denied',
     );
-
   });
 
-  it('cleans up listeners via off() when the stream supports it', async () => {
-    const stream = new FakeStream();
-     
-    (stream as any).off = vi.fn((type: string, h: (e: Record<string, unknown>) => void) => {
-      stream.handlers[type] = (stream.handlers[type] ?? []).filter((x) => x !== h);
-    });
-
-    await hire(happyClient(stream) as any, { serviceId: 'svc_1', requirement: {} });
-     
-    expect((stream as any).off).toHaveBeenCalled();
-  });
-
-  it('cleans up listeners via removeListener() when off() is unavailable', async () => {
-    const stream = new FakeStream();
-     
-    (stream as any).removeListener = vi.fn((type: string, h: (e: Record<string, unknown>) => void) => {
-      stream.handlers[type] = (stream.handlers[type] ?? []).filter((x) => x !== h);
-    });
-
-    await hire(happyClient(stream) as any, { serviceId: 'svc_1', requirement: {} });
-     
-    expect((stream as any).removeListener).toHaveBeenCalled();
-  });
-
-  it('throws ORDER_REJECTED when the order is rejected', async () => {
-    const stream = new FakeStream();
+  it('throws ORDER_REJECTED when the order is rejected after payment', async () => {
+    let paid = false;
     const client = {
-      getSharedStream: vi.fn(async () => stream),
-      negotiateOrder: vi.fn(async () => {
-        setImmediate(() =>
-          stream.emit('order_created', { negotiation_id: 'neg_1', order_id: 'ord_1' }),
-        );
-        return { negotiationId: 'neg_1' };
-      }),
-      payOrder: vi.fn(async (orderId: string) => {
-        setImmediate(() => stream.emit('order_rejected', { order_id: orderId }));
+      negotiateOrder: vi.fn(async () => ({ negotiationId: 'neg_1' })),
+      getNegotiation: vi.fn(async () => ({ status: 'accepted', orderId: 'ord_1' })),
+      getOrder: vi.fn(async () => ({ status: paid ? 'rejected' : 'created' })),
+      payOrder: vi.fn(async () => {
+        paid = true;
         return { txHash: 'tx_hash_1', order: { price: '0.05' } };
       }),
       getDelivery: vi.fn(),
@@ -150,18 +101,14 @@ describe('hire (live mode)', () => {
     );
   });
 
-  it('throws ORDER_EXPIRED when the order is expired', async () => {
-    const stream = new FakeStream();
+  it('throws ORDER_EXPIRED when the order expires', async () => {
+    let paid = false;
     const client = {
-      getSharedStream: vi.fn(async () => stream),
-      negotiateOrder: vi.fn(async () => {
-        setImmediate(() =>
-          stream.emit('order_created', { negotiation_id: 'neg_1', order_id: 'ord_1' }),
-        );
-        return { negotiationId: 'neg_1' };
-      }),
-      payOrder: vi.fn(async (orderId: string) => {
-        setImmediate(() => stream.emit('order_expired', { order_id: orderId }));
+      negotiateOrder: vi.fn(async () => ({ negotiationId: 'neg_1' })),
+      getNegotiation: vi.fn(async () => ({ status: 'accepted', orderId: 'ord_1' })),
+      getOrder: vi.fn(async () => ({ status: paid ? 'expired' : 'created' })),
+      payOrder: vi.fn(async () => {
+        paid = true;
         return { txHash: 'tx_hash_1', order: { price: '0.05' } };
       }),
       getDelivery: vi.fn(),
@@ -172,34 +119,27 @@ describe('hire (live mode)', () => {
     );
   });
 
-  it('rejects with timeout when no event is received within the timeout', async () => {
+  it('rejects with a completion timeout when the order never completes', async () => {
     vi.useFakeTimers();
-    const stream = new FakeStream();
+    let paid = false;
     const client = {
-      getSharedStream: vi.fn(async () => stream),
-      negotiateOrder: vi.fn(async () => {
-        setImmediate(() =>
-          stream.emit('order_created', { negotiation_id: 'neg_1', order_id: 'ord_1' }),
-        );
-        return { negotiationId: 'neg_1' };
-      }),
+      negotiateOrder: vi.fn(async () => ({ negotiationId: 'neg_1' })),
+      getNegotiation: vi.fn(async () => ({ status: 'accepted', orderId: 'ord_1' })),
+      getOrder: vi.fn(async () => ({ status: paid ? 'paid' : 'created' })), // never completes after pay
       payOrder: vi.fn(async () => {
+        paid = true;
         return { txHash: 'tx_hash_1', order: { price: '0.05' } };
       }),
       getDelivery: vi.fn(),
     };
 
     const hirePromise = hire(client as any, { serviceId: 'svc_1', requirement: {} });
-    
-    // First, let negotiation run and order_created emit
+    // Let the synchronous negotiate/accept/pay microtasks settle.
     await vi.advanceTimersByTimeAsync(10);
-
-    // Create the assertion promise first to attach the catch handler
-    const assertionPromise = expect(hirePromise).rejects.toThrow('Timeout waiting for order ord_1 completion');
-
-    // Then advance time to trigger timeout
+    const assertionPromise = expect(hirePromise).rejects.toThrow(
+      'Timeout waiting for order ord_1 completion',
+    );
     await vi.advanceTimersByTimeAsync(300_000);
-
     await assertionPromise;
     vi.useRealTimers();
   });
@@ -226,7 +166,6 @@ describe('hire (mock mode)', () => {
 
     expect(result.orderId).toMatch(/^mock_order_/);
     expect(result.txHash).toContain('0xmock_');
-    expect(client.connectWebSocket).not.toHaveBeenCalled();
     expect(client.negotiateOrder).not.toHaveBeenCalled();
   });
 });

@@ -38,7 +38,18 @@ export async function runProvider<TOutput = unknown>(
 
   const { serviceMatch, payoutAddress, enableStateRecovery } = handlers;
 
-  const stream = await client.connectWebSocket();
+  // Use the shared singleton stream (NOT a fresh connectWebSocket()) so that an
+  // agent which is BOTH a provider and a requester (Maestro, Gauntlet) reuses a
+  // single WebSocket per SDK key. Opening a second connection with the same key
+  // triggers the CROO "policy violation (duplicate key)" close, which would kill
+  // the hire() stream and stall every sub-agent hire. Falls back to a direct
+  // connection for raw SDK clients that lack the makeClient() shared-stream wrapper.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sharedStream = (client as any).getSharedStream;
+  const stream =
+    typeof sharedStream === 'function'
+      ? await sharedStream.call(client)
+      : await client.connectWebSocket();
 
   // ── Active state recovery checks ──
   if (enableStateRecovery && typeof client.listOrders === 'function') {
