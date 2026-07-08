@@ -39,6 +39,24 @@ describe('runProvider', () => {
     expect(stream.on).toHaveBeenCalledWith(EventType.OrderPaid, expect.any(Function));
   });
 
+  it('reuses the shared stream when the client exposes getSharedStream', async () => {
+    const stream = { on: vi.fn() };
+    const getSharedStream = vi.fn().mockResolvedValue(stream);
+    const connectWebSocket = vi.fn();
+    const client = { getSharedStream, connectWebSocket };
+
+    await runProvider(client as any, {
+      serviceMatch: () => true,
+      work: async () => ({ type: 'text', data: 'ok' }),
+    });
+
+    // Providers that are also requesters must reuse the singleton stream,
+    // never open a second WebSocket with the same SDK key.
+    expect(getSharedStream).toHaveBeenCalled();
+    expect(connectWebSocket).not.toHaveBeenCalled();
+    expect(stream.on).toHaveBeenCalledWith(EventType.NegotiationCreated, expect.any(Function));
+  });
+
   it('accepts a negotiation when serviceMatch returns true', async () => {
     const stream = { on: vi.fn() };
     const client = {

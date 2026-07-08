@@ -108,8 +108,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * Already-decimal inputs are passed through; empty/garbage → "0".
  */
 function toUsdcDecimal(raw: string | undefined): string {
-  const s = String(raw ?? '').trim();
-  if (!s) return '0';
+  const s = String(raw).trim();
   if (s.includes('.')) return s; // already a decimal amount
   try {
     const n = BigInt(s);

@@ -157,4 +157,85 @@ describe('hire — real flow edge cases (REST polling)', () => {
       vi.useRealTimers();
     }
   });
+
+  it("returns '0' amountPaid when the settled price is a non-numeric string", async () => {
+    let paid = false;
+    const client = {
+      negotiateOrder: vi.fn(async () => ({ negotiationId: 'neg_1' })),
+      getNegotiation: vi.fn(async () => ({ status: 'accepted', orderId: 'ord_1' })),
+      // settled order carries a price that is neither decimal nor base-units parseable
+      getOrder: vi.fn(async () => ({ status: paid ? 'completed' : 'created', price: 'not-a-number' })),
+      payOrder: vi.fn(async () => {
+        paid = true;
+        return { txHash: 'tx', order: { price: '' } };
+      }),
+      getDelivery: vi.fn(async () => ({ deliverableType: 'text', deliverableText: 'ok' })),
+    };
+    const result = await hire(client as any, { serviceId: 's', requirement: {} });
+    expect(result.amountPaid).toBe('0');
+  });
+
+  it("times out when the order never reaches 'created' (stuck 'creating')", async () => {
+    vi.useFakeTimers();
+    try {
+      const client = {
+        negotiateOrder: vi.fn(async () => ({ negotiationId: 'neg_1' })),
+        getNegotiation: vi.fn(async () => ({ status: 'accepted', orderId: 'ord_1' })),
+        getOrder: vi.fn(async () => ({ status: 'creating' })), // never becomes payable
+      };
+      const promise = hire(client as any, { serviceId: 's', requirement: {} });
+      const assertion = expect(promise).rejects.toThrow(
+        "Timeout waiting for order ord_1 to reach 'created'",
+      );
+      await vi.advanceTimersByTimeAsync(61_000);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('throws ORDER_FAILED when the order fails after payment', async () => {
+    let paid = false;
+    const client = {
+      negotiateOrder: vi.fn(async () => ({ negotiationId: 'neg_1' })),
+      getNegotiation: vi.fn(async () => ({ status: 'accepted', orderId: 'ord_1' })),
+      // payable before payment, then reports a terminal failure during completion polling
+      getOrder: vi.fn(async () => ({ status: paid ? 'deliver_failed' : 'created' })),
+      payOrder: vi.fn(async () => {
+        paid = true;
+        return { txHash: 'tx', order: { price: '0.05' } };
+      }),
+    };
+    await expect(hire(client as any, { serviceId: 's', requirement: {} })).rejects.toThrow(
+      'ORDER_FAILED:deliver_failed',
+    );
+  });
+
+  it('formats a whole-USDC base-units price with no fractional part', async () => {
+    let paid = false;
+    const client = {
+      negotiateOrder: vi.fn(async () => ({ negotiationId: 'neg_1' })),
+      getNegotiation: vi.fn(async () => ({ status: 'accepted', orderId: 'ord_1' })),
+      // 2000000 base units = exactly 2 USDC → no fractional part
+      getOrder: vi.fn(async () => ({ status: paid ? 'completed' : 'created', price: '2000000' })),
+      payOrder: vi.fn(async () => {
+        paid = true;
+        return { txHash: 'tx', order: { price: '' } };
+      }),
+      getDelivery: vi.fn(async () => ({ deliverableType: 'text', deliverableText: 'ok' })),
+    };
+    const result = await hire(client as any, { serviceId: 's', requirement: {} });
+    expect(result.amountPaid).toBe('2');
+  });
+
+  it('throws NEGOTIATION_EXPIRED when the negotiation expires', async () => {
+    const client = fullClient(
+      { deliverableType: 'text', deliverableText: 'x' },
+      undefined,
+      { getNegotiation: vi.fn(async () => ({ status: 'expired' })) },
+    );
+    await expect(hire(client as any, { serviceId: 's', requirement: {} })).rejects.toThrow(
+      'NEGOTIATION_EXPIRED',
+    );
+  });
 });
