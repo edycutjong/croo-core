@@ -176,7 +176,7 @@ tag matches `package.json`, then runs `npm publish --provenance --access public`
 
 ## 📁 Project Structure
 ```text
-dorahacks-croo-core/
+croo-core/
 ├── docs/              # README assets (hero, screenshots)
 ├── src/               # Application source code
 ├── __tests__/         # Vitest test suites
