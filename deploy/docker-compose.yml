@@ -1,0 +1,62 @@
+# CROO Constellation — single-host deployment of all 6 agents.
+# Each service builds straight from its PUBLIC GitHub repo (no local clone needed),
+# runs as an outbound-only background worker (connects out to the CROO WebSocket,
+# no inbound port), and restarts on crash.
+#
+#   docker compose up -d --build      # bring all 6 online
+#   docker compose ps                 # status
+#   docker compose logs -f            # tail all 6
+#   docker compose down               # stop all
+#
+# Secrets live in ./env/<agent>.env (gitignored). See README.md.
+name: croo-constellation
+
+# Shared defaults. CROO_MOCK is forced false here (overrides any value in the
+# env file) so a stray CROO_MOCK=true can never silently run an agent offline.
+x-agent: &agent
+  restart: unless-stopped
+  environment:
+    NODE_ENV: production
+    CROO_MOCK: "false"          # LIVE — connect to the real CROO WebSocket
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  worker:
+    <<: *agent
+    container_name: croo-worker
+    build: https://github.com/edycutjong/worker.git#main
+    env_file: ./env/worker.env          # CROO_SDK_KEY, WORKER_SERVICE_ID, ANTHROPIC_API_KEY
+
+  litmus:
+    <<: *agent
+    container_name: croo-litmus
+    build: https://github.com/edycutjong/litmus.git#main
+    env_file: ./env/litmus.env          # CROO_SDK_KEY, LITMUS_SERVICE_ID, ANTHROPIC_API_KEY
+
+  gauntlet:
+    <<: *agent
+    container_name: croo-gauntlet
+    build: https://github.com/edycutjong/gauntlet.git#main
+    env_file: ./env/gauntlet.env        # CROO_SDK_KEY, GAUNTLET_SERVICE_ID  (requester — fund wallet)
+
+  goldilocks:
+    <<: *agent
+    container_name: croo-goldilocks
+    build: https://github.com/edycutjong/goldilocks.git#main
+    env_file: ./env/goldilocks.env      # CROO_SDK_KEY, GOLDILOCKS_SERVICE_ID, ANTHROPIC_API_KEY
+
+  summon:
+    <<: *agent
+    container_name: croo-summon
+    build: https://github.com/edycutjong/summon.git#main
+    env_file: ./env/summon.env          # CROO_SDK_KEY, SUMMON_SERVICE_ID, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+
+  maestro:
+    <<: *agent
+    container_name: croo-maestro
+    build: https://github.com/edycutjong/maestro.git#main
+    env_file: ./env/maestro.env         # CROO_SDK_KEY, MAESTRO_SERVICE_ID + sub-agent IDs (requester — fund wallet)

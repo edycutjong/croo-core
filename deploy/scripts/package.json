@@ -1,0 +1,10 @@
+{
+  "name": "croo-hire-test",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tiny requester-side helper to test-hire the live CROO agents.",
+  "dependencies": {
+    "@edycutjong/croo-core": "^0.5.0"
+  }
+}
