@@ -1,3 +1,10 @@
+## [0.5.1](https://github.com/edycutjong/croo-core/compare/v0.5.0...v0.5.1) (2026-07-08)
+
+
+### Bug Fixes
+
+* **icon:** animated icon renders on GitHub (SMIL + real transform) ([d252982](https://github.com/edycutjong/croo-core/commit/d2529822a4d6f45871486bc4fc309cae87ea7dc5))
+
 # [0.5.0](https://github.com/edycutjong/croo-core/compare/v0.4.1...v0.5.0) (2026-07-07)
 
 
