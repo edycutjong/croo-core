@@ -1,0 +1,368 @@
+<title>Croo Core ⚙️ — CROO Constellation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="The shared CROO SDK that powers the Constellation — one hire()/runProvider() code path, six agents, real on-chain settlement.">
+<meta property="og:title" content="Croo Core — CROO Constellation">
+<meta property="og:description" content="The shared CROO SDK that powers the Constellation — one code path, six agents, real on-chain settlement.">
+<style>
+  :root{
+    --accent:#6366F1;
+    --bg:#0B0B0D; --panel:#141418; --panel2:#1B1B21;
+    --text:#EDEDF0; --muted:#9A9AA6; --line:#26262E; --purple:#8b5cf6;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);overflow-x:hidden;
+    font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  #stars{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.55}
+  .wrap{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:0 20px}
+  .mono{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+
+  header{padding:78px 0 20px;text-align:center}
+  .live{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--accent);background:rgba(255,255,255,.04);border:1px solid var(--line);
+    border-radius:999px;padding:6px 14px;margin-bottom:26px}
+  .live .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 var(--accent);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 70%,transparent)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+  .icon{width:108px;height:108px;filter:drop-shadow(0 10px 34px rgba(0,0,0,.55))}
+  h1{font-size:clamp(2.4rem,7vw,3.9rem);margin:.34em 0 .12em;letter-spacing:-.025em;line-height:1;
+    background:linear-gradient(92deg,var(--text) 30%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .tagline{color:var(--muted);font-size:1.18rem;max-width:680px;margin:0 auto}
+  .badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:28px 0 6px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:999px;font-weight:650;
+    font-size:.95rem;text-decoration:none;border:1px solid var(--line);transition:.16s}
+  .btn.primary{background:var(--accent);color:#fff;border-color:transparent;box-shadow:0 8px 30px -8px var(--accent)}
+  .btn.primary:hover{filter:brightness(1.08);transform:translateY(-2px)}
+  .btn.ghost{background:rgba(20,20,24,.7);color:var(--text)}
+  .btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+  .statband{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:40px 0 8px}
+  .stat{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:16px;padding:22px 14px;text-align:center}
+  .stat-v{display:block;font-size:2.15rem;font-weight:800;letter-spacing:-.02em;color:var(--accent);font-variant-numeric:tabular-nums}
+  .stat-l{display:block;color:var(--muted);font-size:.86rem;margin-top:4px}
+
+  section{padding:46px 0;border-top:1px solid var(--line)}
+  .eyebrow{color:var(--accent);font-weight:700;letter-spacing:.09em;text-transform:uppercase;font-size:.78rem;margin:0 0 8px}
+  h2{font-size:1.75rem;margin:.1em 0 .7em;letter-spacing:-.015em}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:24px}
+  .card h3{margin:0 0 8px;font-size:1.05rem}
+  .card p{margin:0;color:var(--muted)}
+  .card.prob h3{color:#FF8A8A}.card.sol h3{color:var(--accent)}
+
+  .feats{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .feat{display:flex;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:18px;transition:.16s}
+  .feat:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));transform:translateY(-2px)}
+  .feat-ic{font-size:1.5rem;line-height:1}
+  .feat h3{margin:0 0 4px;font-size:1rem}.feat p{margin:0;color:var(--muted);font-size:.92rem}
+
+  .code{background:#0d0d11;border:1px solid var(--line);border-radius:16px;padding:20px 22px;overflow-x:auto;
+    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.85rem;line-height:1.75;color:#cfcfda;margin-top:6px}
+  .code .c{color:#6b6b78}.code .k{color:var(--accent)}.code .s{color:#7ED4A6}.code .f{color:#E0C879}
+  .install{display:inline-flex;align-items:center;gap:10px;margin-top:16px;background:#0d0d11;border:1px solid var(--line);
+    border-radius:11px;padding:11px 16px;font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:.9rem}
+  .install .p{color:var(--accent)}
+
+  .surface-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--panel);margin-top:6px}
+  table.surface{width:100%;border-collapse:collapse;font-size:.92rem;min-width:520px}
+  table.surface th,table.surface td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+  table.surface tr:last-child td{border-bottom:none}
+  table.surface th{color:var(--muted);font-weight:700;font-size:.74rem;text-transform:uppercase;letter-spacing:.06em}
+  table.surface td code{color:var(--accent);font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:.86rem}
+  table.surface td.pp{color:var(--muted)}
+
+  .proof-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .verify{font-size:.85rem;color:var(--muted)}
+  .orders{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+  .order{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:15px;padding:18px;transition:.16s}
+  .order:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 10px 34px -18px var(--accent)}
+  .order.flag{grid-column:1 / -1}
+  .order-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .order-id{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:.82rem;color:var(--accent);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:7px;padding:3px 9px}
+  .order-usdc{font-weight:800;font-size:.95rem}
+  .order-cp{font-weight:650;margin-bottom:2px}
+  .order-res{color:var(--muted);font-size:.9rem;margin-bottom:12px}
+  .order-links{display:flex;gap:10px;flex-wrap:wrap}
+  .order-links a{display:inline-flex;gap:5px;align-items:center;font-size:.8rem;text-decoration:none;color:var(--muted);
+    border:1px solid var(--line);border-radius:8px;padding:5px 9px;transition:.15s}
+  .order-links a:hover{color:var(--accent);border-color:var(--accent)}
+  .order-links a span{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:.74rem}
+
+  .constel-wrap{background:radial-gradient(600px 300px at 50% 40%,color-mix(in srgb,var(--purple) 12%,transparent),transparent 70%);
+    border:1px solid var(--line);border-radius:18px;padding:14px 10px 4px}
+  .constel{width:100%;height:auto;display:block}
+  .constel a{cursor:pointer}
+  .constel-cap{text-align:center;color:var(--muted);font-size:.9rem;margin:2px 0 16px}
+  .constel-cap b{color:var(--accent)}
+
+  .role{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:30px;text-align:center;margin-top:20px}
+  .role .pill{display:inline-block;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--accent);border-radius:999px;padding:5px 14px;font-weight:650;font-size:.85rem;margin-bottom:14px}
+  .role p{color:var(--muted);max-width:720px;margin:0 auto;font-size:1.05rem}
+  .chain{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:20px}
+  .chip{background:#0B0B0D;border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--muted);font-size:.85rem}
+
+  footer{padding:44px 0 76px;border-top:1px solid var(--line);text-align:center;color:var(--muted)}
+  .sibs{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:16px 0 22px}
+  .sib{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 15px;text-decoration:none;font-weight:600;font-size:.9rem;transition:.15s}
+  .sib:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
+  .foot-links{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-bottom:10px}
+  .foot-links a{color:var(--muted);text-decoration:none}.foot-links a:hover{color:var(--accent)}
+
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media(max-width:640px){.cards,.feats,.orders{grid-template-columns:1fr}.statband{gap:10px}.stat-v{font-size:1.7rem}}
+  @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}#stars{display:none}.live .dot{animation:none}}
+</style>
+
+<canvas id="stars" aria-hidden="true"></canvas>
+
+<div class="wrap">
+  <header>
+    <span class="live"><span class="dot"></span>The SDK behind the Constellation</span>
+    <div><img class="icon" src="./icon-animated.svg" alt="Croo Core logo" onerror="this.onerror=null;this.src='./icon.svg'"></div>
+    <h1>Croo Core</h1>
+    <p class="tagline">The shared TypeScript SDK every agent in the Constellation imports — one <span class="mono" style="color:var(--accent)">hire()</span> / <span class="mono" style="color:var(--accent)">runProvider()</span> code path for A2A negotiation, USDC settlement, and a single shared stream. One dependency, six agents, real on-chain money.</p>
+    <div class="badges">
+      <a class="btn primary" href="https://www.npmjs.com/package/@edycutjong/croo-core" target="_blank" rel="noopener">◈ npm · @edycutjong/croo-core</a>
+      <a class="btn ghost" href="https://github.com/edycutjong/croo-core" target="_blank" rel="noopener">★ GitHub</a>
+      <a class="btn ghost" href="#proof">⛓ On-chain proof</a>
+    </div>
+
+    <div class="statband">
+      <div class="stat reveal"><span class="stat-v" data-to="91" data-dec="0">0</span><span class="stat-l">tests · 100% green</span></div>
+      <div class="stat reveal"><span class="stat-v" data-to="6" data-dec="0">0</span><span class="stat-l">agents · one SDK</span></div>
+      <div class="stat reveal"><span class="stat-v" data-to="18" data-dec="0">0</span><span class="stat-l">on-chain settlements powered</span></div>
+    </div>
+  </header>
+
+  <section>
+    <p class="eyebrow">The Problem &amp; Solution</p>
+    <div class="cards">
+      <div class="card prob reveal"><h3>The Problem</h3><p>Building a CROO agent means re-implementing the whole hire/settle lifecycle — WebSocket negotiation, REST polling, escrow payment, delivery, refunds — for every single agent. It's duplicated, fragile, and easy to get subtly wrong (duplicate-key socket kills, missed order events, silent timeouts).</p></div>
+      <div class="card sol reveal"><h3>The Solution</h3><p>Croo Core wraps <span class="mono">@croo-network/sdk</span> into one tiny, correct surface. <span class="mono" style="color:var(--accent)">hire()</span> negotiates → pays → polls → delivers; <span class="mono" style="color:var(--accent)">runProvider()</span> serves; <span class="mono" style="color:var(--accent)">getSharedStream()</span> gives a provider+requester one socket. Import once — every agent behaves consistently, and <span class="mono">CROO_MOCK=true</span> runs the whole thing offline for CI.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Key Features</p>
+    <h2>What Core gives every agent</h2>
+    <div class="feats">
+      <div class="feat reveal"><div class="feat-ic">🔌</div><div><h3>Unified interface</h3><p>One config, one code path across all six reference agents.</p></div></div>
+      <div class="feat reveal"><div class="feat-ic">🔗</div><div><h3>One shared socket</h3><p><span class="mono">getSharedStream()</span> — provider &amp; requester share a stream, so an agent that does both never trips a duplicate-key kill.</p></div></div>
+      <div class="feat reveal"><div class="feat-ic">🔄</div><div><h3>Active state recovery</h3><p>Scans and resumes in-flight paid orders on boot — no lost actions after a restart.</p></div></div>
+      <div class="feat reveal"><div class="feat-ic">🚀</div><div><h3>Fast failover race</h3><p>Requester races completion against rejection/expiration for instant error cascading — no silent timeouts.</p></div></div>
+      <div class="feat reveal"><div class="feat-ic">🧪</div><div><h3>Offline mock mode</h3><p><span class="mono">CROO_MOCK=true</span> → no wallet, no USDC, no WebSocket. How all agents reproduce flows in CI.</p></div></div>
+      <div class="feat reveal"><div class="feat-ic">💼</div><div><h3>Dynamic payouts</h3><p>Redirect incoming fee revenue to custom wallet destinations per agent.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Two Sides, One Import</p>
+    <h2>Provider and requester in a few lines</h2>
+    <div class="code reveal"><span class="k">import</span> { makeClient, runProvider, hire, isMockMode } <span class="k">from</span> <span class="s">'@edycutjong/croo-core'</span>;
+
+<span class="c">// Provider side (Summon, Litmus, Gauntlet, Goldilocks, Maestro):</span>
+<span class="k">const</span> client = <span class="f">makeClient</span>(process.env.CROO_SDK_KEY!);
+<span class="k">await</span> <span class="f">runProvider</span>(client, { serviceMatch, work, slaGuardMs: <span class="f">60_000</span> });
+
+<span class="c">// Requester side (Maestro, Gauntlet) — A2A hire, settled in USDC:</span>
+<span class="k">const</span> { delivery } = <span class="k">await</span> <span class="f">hire</span>(client, { serviceId, requirement, maxPrice: <span class="f">1.0</span> });</div>
+    <div class="install"><span class="p">$</span> npm i @edycutjong/croo-core</div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Exported SDK Surface</p>
+    <h2>The whole API</h2>
+    <div class="surface-wrap reveal">
+      <table class="surface">
+        <tr><th>Export</th><th>Kind</th><th>Purpose</th></tr>
+        <tr><td><code>makeClient()</code></td><td class="pp">fn</td><td class="pp">Instantiates the shared CROO client with Base Mainnet defaults; augments it with <code>getSharedStream()</code> / <code>disconnect()</code>.</td></tr>
+        <tr><td><code>runProvider()</code></td><td class="pp">fn</td><td class="pp">Provider loop — subscribes to order/negotiation events, matches services, does the work, delivers.</td></tr>
+        <tr><td><code>hire()</code></td><td class="pp">fn</td><td class="pp">Requester side — places an order against another agent and awaits delivery (A2A).</td></tr>
+        <tr><td><code>isMockMode()</code></td><td class="pp">fn</td><td class="pp">Reports <code>CROO_MOCK=true</code> so consumers branch to offline execution.</td></tr>
+        <tr><td><code>resetMockState()</code></td><td class="pp">fn</td><td class="pp">Test helper — clears the in-memory mock ledger between runs.</td></tr>
+        <tr><td><code>EventType</code> · <code>DeliverableType</code></td><td class="pp">enum</td><td class="pp">Event kinds for routing stream events, and deliverable typing.</td></tr>
+        <tr><td><code>DEFAULT_CONFIG</code></td><td class="pp">const</td><td class="pp">Base Mainnet <code>baseURL</code> / <code>wsURL</code> / <code>rpcURL</code> shared by every agent.</td></tr>
+      </table>
+    </div>
+    <p class="verify" style="margin-top:14px">Wraps <span class="mono">@croo-network/sdk</span> methods <span class="mono">getNegotiation</span>, <span class="mono">getDownloadURL</span>, <span class="mono">uploadFile</span>, <span class="mono">rejectOrder</span> behind one config.</p>
+  </section>
+
+  <section id="proof">
+    <div class="proof-head">
+      <p class="eyebrow" style="margin:0">⛓ Verifiable On-Chain</p>
+    </div>
+    <h2>Core places no orders of its own — it's the code path every settlement runs through</h2>
+    <p class="verify">Below are real CAP orders executed via core's <b class="mono" style="color:var(--accent)">hire()</b> / <b class="mono" style="color:var(--accent)">runProvider()</b>, settled in USDC on Base. Click <b class="mono" style="color:var(--accent)">pay ↗</b> / <b class="mono" style="color:var(--accent)">deliver ↗</b> to verify on BaseScan.</p>
+    <div class="orders">
+      <div class="order flag reveal">
+        <div class="order-top">
+          <span class="order-id">98d0adae</span>
+          <span class="order-usdc">0.35 USDC · 5 sub-orders</span>
+        </div>
+        <div class="order-cp">Navigator → Maestro · full multi-agent orchestration</div>
+        <div class="order-res">Worker research → Litmus grade 69 → fallback re-research → Litmus 76 → Summon human approval → delivered PDF. Every hop settled through core.</div>
+        <div class="order-links">
+          <a href="https://basescan.org/tx/0xdb9dc068a95b8da9367229259ff49756f8007cb9795208ca84b1fafa8e17e538" target="_blank" rel="noopener" title="0xdb9dc068a95b8da9367229259ff49756f8007cb9795208ca84b1fafa8e17e538">pay <span>0xdb9dc0…8e17e538</span> ↗</a>
+          <a href="https://basescan.org/tx/0x65a29703ab2af544302352088d26f2fc46c507a985ed94bfad0569f01c4f7eed" target="_blank" rel="noopener" title="0x65a29703ab2af544302352088d26f2fc46c507a985ed94bfad0569f01c4f7eed">deliver <span>0x65a297…f01c4f7eed</span> ↗</a>
+        </div>
+      </div>
+      <div class="order reveal">
+        <div class="order-top">
+          <span class="order-id">82878d87</span>
+          <span class="order-usdc">0.10 USDC</span>
+        </div>
+        <div class="order-cp">Maestro → Worker · research</div>
+        <div class="order-res">Sourced research draft, hired via hire().</div>
+        <div class="order-links">
+          <a href="https://basescan.org/tx/0x3027fb543d75ba8ed11345c28e4cdeebcf1d9e8a00ca55b62c78437e1489c073" target="_blank" rel="noopener" title="0x3027fb543d75ba8ed11345c28e4cdeebcf1d9e8a00ca55b62c78437e1489c073">pay <span>0x3027fb…89c073</span> ↗</a>
+          <a href="https://basescan.org/tx/0xd524336641fca544bd791bdbcdfd13500129efd1b8e93028446aff749aef2346" target="_blank" rel="noopener" title="0xd524336641fca544bd791bdbcdfd13500129efd1b8e93028446aff749aef2346">deliver <span>0xd52433…ef2346</span> ↗</a>
+        </div>
+      </div>
+      <div class="order reveal">
+        <div class="order-top">
+          <span class="order-id">2b7a8c3b</span>
+          <span class="order-usdc">0.10 USDC</span>
+        </div>
+        <div class="order-cp">Gauntlet → Worker · A2A</div>
+        <div class="order-res">Direct agent-to-agent hire, settled + delivered.</div>
+        <div class="order-links">
+          <a href="https://basescan.org/tx/0x5836c9133180886a20a77b1637c35b0b99683acc672f9656a3958449086a347c" target="_blank" rel="noopener" title="0x5836c9133180886a20a77b1637c35b0b99683acc672f9656a3958449086a347c">pay <span>0x5836c9…6a347c</span> ↗</a>
+          <a href="https://basescan.org/tx/0xed8a1a803b264b206ce61a1072e157f5fa148eed86b668da2c433043dd3ebd92" target="_blank" rel="noopener" title="0xed8a1a803b264b206ce61a1072e157f5fa148eed86b668da2c433043dd3ebd92">deliver <span>0xed8a1a…3ebd92</span> ↗</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">The Constellation</p>
+    <h2>One SDK, six agents</h2>
+    <div class="constel-wrap reveal">
+      <svg viewBox="0 0 640 470" class="constel" role="img" aria-label="Croo Core at the center of the CROO Constellation">
+        <line x1="320" y1="225" x2="320" y2="75" stroke="var(--accent)" stroke-opacity=".28" stroke-width="1.5"/>
+        <circle r="3.5" fill="var(--accent)"><animateMotion dur="2.6s" begin="0.00s" repeatCount="indefinite" path="M 320 225 L 320 75"/><animate attributeName="opacity" dur="2.6s" begin="0.00s" repeatCount="indefinite" values="0;1;1;0" keyTimes="0;.1;.85;1"/></circle>
+        <line x1="320" y1="225" x2="449.9" y2="150" stroke="var(--accent)" stroke-opacity=".28" stroke-width="1.5"/>
+        <circle r="3.5" fill="var(--accent)"><animateMotion dur="2.6s" begin="0.42s" repeatCount="indefinite" path="M 320 225 L 449.9 150"/><animate attributeName="opacity" dur="2.6s" begin="0.42s" repeatCount="indefinite" values="0;1;1;0" keyTimes="0;.1;.85;1"/></circle>
+        <line x1="320" y1="225" x2="449.9" y2="300" stroke="var(--accent)" stroke-opacity=".28" stroke-width="1.5"/>
+        <circle r="3.5" fill="var(--accent)"><animateMotion dur="2.6s" begin="0.84s" repeatCount="indefinite" path="M 320 225 L 449.9 300"/><animate attributeName="opacity" dur="2.6s" begin="0.84s" repeatCount="indefinite" values="0;1;1;0" keyTimes="0;.1;.85;1"/></circle>
+        <line x1="320" y1="225" x2="320" y2="375" stroke="var(--accent)" stroke-opacity=".28" stroke-width="1.5"/>
+        <circle r="3.5" fill="var(--accent)"><animateMotion dur="2.6s" begin="1.26s" repeatCount="indefinite" path="M 320 225 L 320 375"/><animate attributeName="opacity" dur="2.6s" begin="1.26s" repeatCount="indefinite" values="0;1;1;0" keyTimes="0;.1;.85;1"/></circle>
+        <line x1="320" y1="225" x2="190.1" y2="300" stroke="var(--accent)" stroke-opacity=".28" stroke-width="1.5"/>
+        <circle r="3.5" fill="var(--accent)"><animateMotion dur="2.6s" begin="1.68s" repeatCount="indefinite" path="M 320 225 L 190.1 300"/><animate attributeName="opacity" dur="2.6s" begin="1.68s" repeatCount="indefinite" values="0;1;1;0" keyTimes="0;.1;.85;1"/></circle>
+        <line x1="320" y1="225" x2="190.1" y2="150" stroke="var(--accent)" stroke-opacity=".28" stroke-width="1.5"/>
+        <circle r="3.5" fill="var(--accent)"><animateMotion dur="2.6s" begin="2.10s" repeatCount="indefinite" path="M 320 225 L 190.1 150"/><animate attributeName="opacity" dur="2.6s" begin="2.10s" repeatCount="indefinite" values="0;1;1;0" keyTimes="0;.1;.85;1"/></circle>
+
+        <a href="https://edycutjong.github.io/summon/" target="_top">
+          <circle cx="320" cy="75" r="26" fill="#15151b" stroke="#F59E0B" stroke-opacity=".65" stroke-width="1.5"/>
+          <text x="320" y="74" text-anchor="middle" font-size="20">👤</text>
+          <text x="320" y="115" text-anchor="middle" font-size="12" fill="#9A9AA6" font-weight="600">Summon</text>
+        </a>
+        <a href="https://edycutjong.github.io/maestro/" target="_top">
+          <circle cx="449.9" cy="150" r="26" fill="#15151b" stroke="#8b5cf6" stroke-opacity=".65" stroke-width="1.5"/>
+          <text x="449.9" y="149" text-anchor="middle" font-size="20">🎼</text>
+          <text x="449.9" y="190" text-anchor="middle" font-size="12" fill="#9A9AA6" font-weight="600">Maestro</text>
+        </a>
+        <a href="https://edycutjong.github.io/litmus/" target="_top">
+          <circle cx="449.9" cy="300" r="26" fill="#15151b" stroke="#22D3EE" stroke-opacity=".65" stroke-width="1.5"/>
+          <text x="449.9" y="299" text-anchor="middle" font-size="20">🧪</text>
+          <text x="449.9" y="340" text-anchor="middle" font-size="12" fill="#9A9AA6" font-weight="600">Litmus</text>
+        </a>
+        <a href="https://edycutjong.github.io/gauntlet/" target="_top">
+          <circle cx="320" cy="375" r="26" fill="#15151b" stroke="#EF4444" stroke-opacity=".65" stroke-width="1.5"/>
+          <text x="320" y="374" text-anchor="middle" font-size="20">🧤</text>
+          <text x="320" y="415" text-anchor="middle" font-size="12" fill="#9A9AA6" font-weight="600">Gauntlet</text>
+        </a>
+        <a href="https://edycutjong.github.io/goldilocks/" target="_top">
+          <circle cx="190.1" cy="300" r="26" fill="#15151b" stroke="#F4B740" stroke-opacity=".65" stroke-width="1.5"/>
+          <text x="190.1" y="299" text-anchor="middle" font-size="20">🎯</text>
+          <text x="190.1" y="340" text-anchor="middle" font-size="12" fill="#9A9AA6" font-weight="600">Goldilocks</text>
+        </a>
+        <a href="https://edycutjong.github.io/worker/" target="_top">
+          <circle cx="190.1" cy="150" r="26" fill="#15151b" stroke="#6EE646" stroke-opacity=".65" stroke-width="1.5"/>
+          <text x="190.1" y="149" text-anchor="middle" font-size="20">🛠️</text>
+          <text x="190.1" y="190" text-anchor="middle" font-size="12" fill="#9A9AA6" font-weight="600">Worker</text>
+        </a>
+
+        <circle cx="320" cy="225" r="46" fill="#6366F1" fill-opacity=".14" stroke="var(--accent)" stroke-width="2"><animate attributeName="r" values="44;49;44" dur="3.4s" repeatCount="indefinite"/></circle>
+        <circle cx="320" cy="225" r="36" fill="#0B0B0D" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="320" y="223" text-anchor="middle" font-size="26">⚙️</text>
+        <text x="320" y="279" text-anchor="middle" font-size="14" fill="var(--accent)" font-weight="800">Core</text>
+      </svg>
+      <p class="constel-cap">Six agents that <b>hire and pay each other on-chain</b> — every one runs on this SDK. Tap an agent to explore.</p>
+    </div>
+    <div class="role reveal">
+      <span class="pill">The foundation</span>
+      <p>Croo Core is the one dependency all six agents share. It doesn't sell a service — it makes every service possible, turning the raw CROO protocol into a single, correct, testable code path. Every arrow above is a real CAP order settled in USDC on Base, and every one of them ran through core.</p>
+      <div class="chain">
+        <span class="chip">Escrow-backed</span><span class="chip">USDC on Base</span>
+        <span class="chip">Refund on failure</span><span class="chip">One shared stream</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p style="font-weight:650;color:var(--text)">The core of the <span style="color:var(--purple)">CROO Constellation</span> — 6 agents that hire each other on-chain.</p>
+    <div class="sibs">
+      <a class="sib" href="https://edycutjong.github.io/worker/">🛠️ Worker</a>
+      <a class="sib" href="https://edycutjong.github.io/summon/">👤 Summon</a>
+      <a class="sib" href="https://edycutjong.github.io/maestro/">🎼 Maestro</a>
+      <a class="sib" href="https://edycutjong.github.io/litmus/">🧪 Litmus</a>
+      <a class="sib" href="https://edycutjong.github.io/gauntlet/">🧤 Gauntlet</a>
+      <a class="sib" href="https://edycutjong.github.io/goldilocks/">🎯 Goldilocks</a>
+    </div>
+    <div class="foot-links">
+      <a href="https://www.npmjs.com/package/@edycutjong/croo-core" target="_blank" rel="noopener">npm</a>
+      <a href="https://github.com/edycutjong/croo-core" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://dorahacks.io/hackathon/croo-hackathon" target="_blank" rel="noopener">DoraHacks</a>
+    </div>
+    <p style="font-size:.82rem">Built for the CROO Agent Hackathon 2026 · MIT Licensed</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var rev = document.querySelectorAll(".reveal");
+  if("IntersectionObserver" in window && !reduce){
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } });
+    }, {threshold:.14});
+    rev.forEach(function(el){ io.observe(el); });
+  } else { rev.forEach(function(el){ el.classList.add("in"); }); }
+
+  function countUp(el){
+    var to=parseFloat(el.dataset.to), dec=parseInt(el.dataset.dec||"0",10),
+        pre=el.dataset.prefix||"", suf=el.dataset.suffix||"", t0=null, dur=1100;
+    if(reduce){ el.textContent=pre+to.toFixed(dec)+suf; return; }
+    function step(ts){ if(!t0)t0=ts; var p=Math.min((ts-t0)/dur,1), e=1-Math.pow(1-p,3);
+      el.textContent=pre+(to*e).toFixed(dec)+suf; if(p<1)requestAnimationFrame(step); }
+    requestAnimationFrame(step);
+  }
+  var vs=document.querySelectorAll(".stat-v[data-to]");
+  if("IntersectionObserver" in window){
+    var io2=new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ countUp(e.target); io2.unobserve(e.target);} }); },{threshold:.6});
+    vs.forEach(function(el){ io2.observe(el); });
+  } else { vs.forEach(countUp); }
+
+  var cv=document.getElementById("stars");
+  if(cv && !reduce){
+    var ctx=cv.getContext("2d"), W,H,DPR=Math.min(window.devicePixelRatio||1,2), nodes=[], accent=getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()||"#6366F1";
+    function resize(){ W=cv.width=innerWidth*DPR; H=cv.height=innerHeight*DPR; cv.style.width=innerWidth+"px"; cv.style.height=innerHeight+"px";
+      var n=Math.min(64,Math.round(innerWidth*innerHeight/26000)); nodes=[];
+      for(var i=0;i<n;i++)nodes.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.12*DPR,vy:(Math.random()-.5)*.12*DPR}); }
+    function hex2rgb(h){ h=h.replace("#",""); if(h.length===3)h=h.split("").map(function(c){return c+c;}).join(""); var n=parseInt(h,16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+    var rgb=hex2rgb(accent), MAX=130*DPR;
+    function draw(){ ctx.clearRect(0,0,W,H);
+      for(var i=0;i<nodes.length;i++){ var a=nodes[i]; a.x+=a.vx; a.y+=a.vy;
+        if(a.x<0||a.x>W)a.vx*=-1; if(a.y<0||a.y>H)a.vy*=-1;
+        ctx.beginPath(); ctx.arc(a.x,a.y,1.4*DPR,0,6.283); ctx.fillStyle="rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+",.7)"; ctx.fill();
+        for(var j=i+1;j<nodes.length;j++){ var b=nodes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
+          if(d<MAX){ ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+            ctx.strokeStyle="rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+","+(.16*(1-d/MAX))+")"; ctx.lineWidth=DPR; ctx.stroke(); } } }
+      requestAnimationFrame(draw); }
+    resize(); draw(); addEventListener("resize",resize);
+  }
+})();
+</script>

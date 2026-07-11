@@ -7,6 +7,7 @@
   <br/>
 
   [![Built for CROO Hackathon](https://img.shields.io/badge/DoraHacks-CROO_Hackathon_2026-8b5cf6?style=for-the-badge)](https://dorahacks.io/hackathon/croo-hackathon)
+  [![Live Pitch](https://img.shields.io/badge/Live_Pitch-View_Demo-6366F1?style=for-the-badge)](https://edycutjong.github.io/croo-core/)
 
   <br/>
 
