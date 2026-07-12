@@ -11,6 +11,7 @@
 
   <br/>
 
+  [![npm](https://img.shields.io/npm/v/@edycutjong/croo-core?style=flat&logo=npm&color=CB3837)](https://www.npmjs.com/package/@edycutjong/croo-core)
   ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
   ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white)
   [![CI](https://github.com/edycutjong/croo-core/actions/workflows/ci.yml/badge.svg)](https://github.com/edycutjong/croo-core/actions/workflows/ci.yml)
