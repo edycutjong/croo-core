@@ -69,21 +69,19 @@ graph LR
 
 ## 🔗 Live Run Log — Constellation Totals (Base Mainnet)
 
-Aggregate of real CAP orders across every agent built on this SDK during the hackathon. Each agent's own README has its per-order table with BaseScan tx links.
+Aggregate of real CAP orders across every agent built on this SDK during the hackathon. Each agent's own README has its per-order table with BaseScan tx links; A2A orders appear in both parties' logs, so the total below counts **distinct order IDs**.
 
-**Total real CAP orders: _0_** · _last updated: 2026-06-__
+**Total: 9 distinct real CAP orders · 18 settlement transactions · $1.80 USDC** · _last updated: 2026-07-07_
 
-| Agent | Real CAP orders | A2A counterparties |
+| Agent | Orders in its run log | A2A counterparties |
 |-------|-----------------|--------------------|
-| Worker 🛠️ | _0_ | Maestro |
-| Maestro 🎼 | _0_ | Worker, Litmus, Summon |
-| Gauntlet 🧤 | _0_ | targets, Maestro, Litmus, Summon |
-| Summon 👤 | _0_ | Maestro, external bots |
-| Litmus 🧪 | _0_ | Maestro, external |
-| Goldilocks 🧈 | _0_ | external |
-| **Total** | **_0_** | |
-
-> Delete this note once populated.
+| Maestro 🎼 | 6 | Navigator, Worker, Litmus, Summon |
+| Worker 🛠️ | 3 | Maestro, Gauntlet |
+| Gauntlet 🧤 | 2 | Navigator, Worker |
+| Litmus 🧪 | 2 | Maestro |
+| Summon 👤 | 1 | Maestro |
+| Goldilocks 🎯 | 1 | Navigator |
+| **Distinct total** | **9** | |
 
 ## 🏗️ Architecture & Tech Stack
 
@@ -154,7 +152,7 @@ make security-scan # npm audit + license check
 | Layer | Tool | Status |
 |---|---|---|
 | Code Quality | ESLint + TypeScript | ✅ |
-| Unit Testing | Vitest (73 tests) | ✅ |
+| Unit Testing | Vitest (91 tests) | ✅ |
 | Security (SAST) | CodeQL | ✅ |
 | Security (SCA) | Dependabot + npm audit | ✅ |
 | Secret Scanning | TruffleHog | ✅ |

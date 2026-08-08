@@ -1,6 +1,13 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <title>Croo Core ⚙️ — CROO Constellation</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0B0B0D">
 <link rel="icon" type="image/svg+xml" href="./icon.svg">
+<link rel="canonical" href="https://edycutjong.github.io/croo-core/">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://edycutjong.github.io/croo-core/">
 <meta property="og:image" content="https://edycutjong.github.io/croo-core/og-image.png">
@@ -8,25 +15,31 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://edycutjong.github.io/croo-core/og-image.png">
-<meta name="description" content="The shared CROO SDK that powers the Constellation — one hire()/runProvider() code path, six agents, real on-chain settlement.">
+<meta name="description" content="The shared TypeScript SDK every agent in the Constellation imports — one hire()/runProvider() code path for A2A negotiation, USDC settlement, one shared stream.">
 <meta property="og:title" content="Croo Core — CROO Constellation">
-<meta property="og:description" content="The shared CROO SDK that powers the Constellation — one code path, six agents, real on-chain settlement.">
+<meta property="og:description" content="The shared TypeScript SDK every agent in the Constellation imports — one hire()/runProvider() code path for A2A negotiation, USDC settlement, one shared stream.">
 <style>
   :root{
     --accent:#6366F1;
     --bg:#0B0B0D; --panel:#141418; --panel2:#1B1B21;
     --text:#EDEDF0; --muted:#9A9AA6; --line:#26262E; --purple:#8b5cf6;
+    color-scheme:dark;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{margin:0;background:var(--bg);color:var(--text);overflow-x:hidden;
     font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
   a{color:inherit}
+  ::selection{background:color-mix(in srgb,var(--accent) 40%,transparent)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+  :focus:not(:focus-visible){outline:none}
   #stars{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.55}
   .wrap{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:0 20px}
   .mono{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
 
-  header{padding:78px 0 20px;text-align:center}
+  header{position:relative;padding:78px 0 20px;text-align:center}
+  header::before{content:"";position:absolute;left:50%;top:-120px;transform:translateX(-50%);width:720px;height:420px;
+    background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 13%,transparent),transparent);pointer-events:none}
   .live{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;font-weight:700;letter-spacing:.06em;
     text-transform:uppercase;color:var(--accent);background:rgba(255,255,255,.04);border:1px solid var(--line);
     border-radius:999px;padding:6px 14px;margin-bottom:26px}
@@ -35,11 +48,11 @@
   .icon{width:108px;height:108px;filter:drop-shadow(0 10px 34px rgba(0,0,0,.55))}
   h1{font-size:clamp(2.4rem,7vw,3.9rem);margin:.34em 0 .12em;letter-spacing:-.025em;line-height:1;
     background:linear-gradient(92deg,var(--text) 30%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
-  .tagline{color:var(--muted);font-size:1.18rem;max-width:680px;margin:0 auto}
+  .tagline{color:var(--muted);font-size:1.18rem;max-width:660px;margin:0 auto}
   .badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:28px 0 6px}
   .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:999px;font-weight:650;
     font-size:.95rem;text-decoration:none;border:1px solid var(--line);transition:.16s}
-  .btn.primary{background:var(--accent);color:#fff;border-color:transparent;box-shadow:0 8px 30px -8px var(--accent)}
+  .btn.primary{background:var(--accent);color:#0B0B0D;border-color:transparent;box-shadow:0 8px 30px -8px var(--accent)}
   .btn.primary:hover{filter:brightness(1.08);transform:translateY(-2px)}
   .btn.ghost{background:rgba(20,20,24,.7);color:var(--text)}
   .btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
@@ -53,41 +66,48 @@
   section{padding:46px 0;border-top:1px solid var(--line)}
   .eyebrow{color:var(--accent);font-weight:700;letter-spacing:.09em;text-transform:uppercase;font-size:.78rem;margin:0 0 8px}
   h2{font-size:1.75rem;margin:.1em 0 .7em;letter-spacing:-.015em}
+  .lede{color:var(--muted);max-width:720px;margin:-8px 0 22px}
+  .lede b{color:var(--text)}
   .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:24px}
   .card h3{margin:0 0 8px;font-size:1.05rem}
   .card p{margin:0;color:var(--muted)}
   .card.prob h3{color:#FF8A8A}.card.sol h3{color:var(--accent)}
+  .card .mono{font-size:.9em}
 
   .feats{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .feat{display:flex;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:18px;transition:.16s}
   .feat:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));transform:translateY(-2px)}
   .feat-ic{font-size:1.5rem;line-height:1}
   .feat h3{margin:0 0 4px;font-size:1rem}.feat p{margin:0;color:var(--muted);font-size:.92rem}
+  .feat code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.84em;color:var(--accent);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
 
-  .code{background:#0d0d11;border:1px solid var(--line);border-radius:16px;padding:20px 22px;overflow-x:auto;
-    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.85rem;line-height:1.75;color:#cfcfda;margin-top:6px}
-  .code .c{color:#6b6b78}.code .k{color:var(--accent)}.code .s{color:#7ED4A6}.code .f{color:#E0C879}
-  .install{display:inline-flex;align-items:center;gap:10px;margin-top:16px;background:#0d0d11;border:1px solid var(--line);
-    border-radius:11px;padding:11px 16px;font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:.9rem}
-  .install .p{color:var(--accent)}
+  /* SDK — surface table + usage code */
+  .sdk-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;align-items:start}
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:15px;background:var(--panel)}
+  table{width:100%;border-collapse:collapse;font-size:.9rem;min-width:420px}
+  th{color:var(--muted);text-transform:uppercase;font-size:.72rem;letter-spacing:.07em;text-align:left;padding:12px 16px;border-bottom:1px solid var(--line)}
+  td{padding:10px 16px;border-bottom:1px solid var(--line);color:var(--muted);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.84rem;color:var(--text);white-space:nowrap}
+  .codeblock{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .code-head{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line);color:var(--muted);font-size:.8rem}
+  .code-head .dots{display:flex;gap:5px}
+  .code-head .dots i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+  .codeblock pre{margin:0;padding:16px 18px;overflow-x:auto;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    font-size:.8rem;line-height:1.65;color:var(--text)}
+  .c-kw{color:var(--accent)}.c-str{color:#6EE646}.c-cm{color:var(--muted)}.c-fn{color:#22D3EE}
+  .install{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;
+    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.86rem}
+  .install .p{color:var(--accent);margin-right:8px}
 
-  .surface-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--panel);margin-top:6px}
-  table.surface{width:100%;border-collapse:collapse;font-size:.92rem;min-width:520px}
-  table.surface th,table.surface td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top}
-  table.surface tr:last-child td{border-bottom:none}
-  table.surface th{color:var(--muted);font-weight:700;font-size:.74rem;text-transform:uppercase;letter-spacing:.06em}
-  table.surface td code{color:var(--accent);font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:.86rem}
-  table.surface td.pp{color:var(--muted)}
-
-  .proof-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
-  .verify{font-size:.85rem;color:var(--muted)}
-  .orders{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+  /* Proof — flag card + settlement ledger */
+  .orders{display:grid;grid-template-columns:1fr;gap:14px;margin:20px 0}
   .order{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:15px;padding:18px;transition:.16s}
   .order:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 10px 34px -18px var(--accent)}
-  .order.flag{grid-column:1 / -1}
-  .order-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-  .order-id{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:.82rem;color:var(--accent);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:7px;padding:3px 9px}
+  .order-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .order-id{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;color:var(--accent);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:7px;padding:3px 9px}
   .order-usdc{font-weight:800;font-size:.95rem}
   .order-cp{font-weight:650;margin-bottom:2px}
   .order-res{color:var(--muted);font-size:.9rem;margin-bottom:12px}
@@ -95,7 +115,15 @@
   .order-links a{display:inline-flex;gap:5px;align-items:center;font-size:.8rem;text-decoration:none;color:var(--muted);
     border:1px solid var(--line);border-radius:8px;padding:5px 9px;transition:.15s}
   .order-links a:hover{color:var(--accent);border-color:var(--accent)}
-  .order-links a span{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:.74rem}
+  .order-links a span{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.74rem}
+  .ledger td{white-space:nowrap}
+  .ledger .route{white-space:normal;min-width:150px;color:var(--text);font-weight:600;font-size:.86rem}
+  .ledger .oid{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;color:var(--accent)}
+  .ledger .usdc{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+  .ledger a{text-decoration:none;color:var(--muted);border:1px solid var(--line);border-radius:7px;padding:3px 8px;
+    font-size:.76rem;transition:.15s;display:inline-block}
+  .ledger a:hover{color:var(--accent);border-color:var(--accent)}
+  .ledger a+a{margin-left:6px}
 
   .constel-wrap{background:radial-gradient(600px 300px at 50% 40%,color-mix(in srgb,var(--purple) 12%,transparent),transparent 70%);
     border:1px solid var(--line);border-radius:18px;padding:14px 10px 4px}
@@ -106,7 +134,7 @@
 
   .role{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:30px;text-align:center;margin-top:20px}
   .role .pill{display:inline-block;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--accent);border-radius:999px;padding:5px 14px;font-weight:650;font-size:.85rem;margin-bottom:14px}
-  .role p{color:var(--muted);max-width:720px;margin:0 auto;font-size:1.05rem}
+  .role p{color:var(--muted);max-width:700px;margin:0 auto;font-size:1.05rem}
   .chain{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:20px}
   .chip{background:#0B0B0D;border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--muted);font-size:.85rem}
 
@@ -119,18 +147,21 @@
 
   .reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
   .reveal.in{opacity:1;transform:none}
-  @media(max-width:640px){.cards,.feats,.orders{grid-template-columns:1fr}.statband{gap:10px}.stat-v{font-size:1.7rem}}
+  @media(max-width:820px){.sdk-grid{grid-template-columns:1fr}}
+  @media(max-width:640px){.cards,.feats{grid-template-columns:1fr}.statband{gap:10px}.stat-v{font-size:1.7rem}}
   @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}#stars{display:none}.live .dot{animation:none}}
 </style>
+</head>
+<body>
 
 <canvas id="stars" aria-hidden="true"></canvas>
 
 <div class="wrap">
   <header>
-    <span class="live"><span class="dot"></span>The SDK behind the Constellation</span>
+    <span class="live"><span class="dot"></span>Live on npm</span>
     <div><img class="icon" src="./icon-animated.svg" alt="Croo Core logo" onerror="this.onerror=null;this.src='./icon.svg'"></div>
     <h1>Croo Core</h1>
-    <p class="tagline">The shared TypeScript SDK every agent in the Constellation imports — one <span class="mono" style="color:var(--accent)">hire()</span> / <span class="mono" style="color:var(--accent)">runProvider()</span> code path for A2A negotiation, USDC settlement, and a single shared stream. One dependency, six agents, real on-chain money.</p>
+    <p class="tagline">The shared TypeScript SDK every agent in the Constellation imports — one <span class="mono" style="color:var(--accent)">hire()</span> / <span class="mono" style="color:var(--accent)">runProvider()</span> code path for A2A negotiation, USDC settlement, and one shared stream.</p>
     <div class="badges">
       <a class="btn primary" href="https://www.npmjs.com/package/@edycutjong/croo-core" target="_blank" rel="noopener">◈ npm · @edycutjong/croo-core</a>
       <a class="btn ghost" href="https://github.com/edycutjong/croo-core" target="_blank" rel="noopener">★ GitHub</a>
@@ -138,112 +169,123 @@
     </div>
 
     <div class="statband">
-      <div class="stat reveal"><span class="stat-v" data-to="91" data-dec="0">0</span><span class="stat-l">tests · 100% green</span></div>
-      <div class="stat reveal"><span class="stat-v" data-to="6" data-dec="0">0</span><span class="stat-l">agents · one SDK</span></div>
-      <div class="stat reveal"><span class="stat-v" data-to="18" data-dec="0">0</span><span class="stat-l">on-chain settlements powered</span></div>
+      <div class="stat reveal"><span class="stat-v" data-to="91" data-dec="0" data-prefix="" data-suffix="">0</span><span class="stat-l">tests · 100% green</span></div>
+      <div class="stat reveal"><span class="stat-v" data-to="6" data-dec="0" data-prefix="" data-suffix="">0</span><span class="stat-l">agents · one SDK</span></div>
+      <div class="stat reveal"><span class="stat-v" data-to="18" data-dec="0" data-prefix="" data-suffix="">0</span><span class="stat-l">on-chain settlements powered</span></div>
     </div>
   </header>
 
   <section>
     <p class="eyebrow">The Problem &amp; Solution</p>
+    <h2>One import, the whole hire/settle lifecycle</h2>
     <div class="cards">
       <div class="card prob reveal"><h3>The Problem</h3><p>Building a CROO agent means re-implementing the whole hire/settle lifecycle — WebSocket negotiation, REST polling, escrow payment, delivery, refunds — for every single agent. It's duplicated, fragile, and easy to get subtly wrong (duplicate-key socket kills, missed order events, silent timeouts).</p></div>
-      <div class="card sol reveal"><h3>The Solution</h3><p>Croo Core wraps <span class="mono">@croo-network/sdk</span> into one tiny, correct surface. <span class="mono" style="color:var(--accent)">hire()</span> negotiates → pays → polls → delivers; <span class="mono" style="color:var(--accent)">runProvider()</span> serves; <span class="mono" style="color:var(--accent)">getSharedStream()</span> gives a provider+requester one socket. Import once — every agent behaves consistently, and <span class="mono">CROO_MOCK=true</span> runs the whole thing offline for CI.</p></div>
+      <div class="card sol reveal"><h3>The Solution</h3><p>Croo Core wraps <span class="mono">@croo-network/sdk</span> into one tiny, correct surface. <span class="mono" style="color:var(--accent)">hire()</span> negotiates → pays → polls → delivers; <span class="mono" style="color:var(--accent)">runProvider()</span> serves; <span class="mono" style="color:var(--accent)">getSharedStream()</span> gives a provider+requester one socket. Import once — every agent behaves consistently.</p></div>
     </div>
   </section>
 
-  <section>
+  <section id="features">
     <p class="eyebrow">Key Features</p>
     <h2>What Core gives every agent</h2>
     <div class="feats">
-      <div class="feat reveal"><div class="feat-ic">🔌</div><div><h3>Unified interface</h3><p>One config, one code path across all six reference agents.</p></div></div>
-      <div class="feat reveal"><div class="feat-ic">🔗</div><div><h3>One shared socket</h3><p><span class="mono">getSharedStream()</span> — provider &amp; requester share a stream, so an agent that does both never trips a duplicate-key kill.</p></div></div>
-      <div class="feat reveal"><div class="feat-ic">🔄</div><div><h3>Active state recovery</h3><p>Scans and resumes in-flight paid orders on boot — no lost actions after a restart.</p></div></div>
-      <div class="feat reveal"><div class="feat-ic">🚀</div><div><h3>Fast failover race</h3><p>Requester races completion against rejection/expiration for instant error cascading — no silent timeouts.</p></div></div>
-      <div class="feat reveal"><div class="feat-ic">🧪</div><div><h3>Offline mock mode</h3><p><span class="mono">CROO_MOCK=true</span> → no wallet, no USDC, no WebSocket. How all agents reproduce flows in CI.</p></div></div>
-      <div class="feat reveal"><div class="feat-ic">💼</div><div><h3>Dynamic payouts</h3><p>Redirect incoming fee revenue to custom wallet destinations per agent.</p></div></div>
+      <div class="feat reveal"><div class="feat-ic">🔌</div><div><h3>Unified Interface</h3><p>One config, one code path across all six reference agents.</p></div></div>
+      <div class="feat reveal"><div class="feat-ic">🔗</div><div><h3>One Shared Socket</h3><p><code>getSharedStream()</code> — provider &amp; requester share a stream; no duplicate-key kills.</p></div></div>
+      <div class="feat reveal"><div class="feat-ic">🔄</div><div><h3>Active State Recovery</h3><p>Scans and resumes in-flight paid orders on boot — no lost actions.</p></div></div>
+      <div class="feat reveal"><div class="feat-ic">🚀</div><div><h3>Fast Failover Race</h3><p>Requester races completion against rejection/expiration — no silent timeouts.</p></div></div>
+      <div class="feat reveal"><div class="feat-ic">🧪</div><div><h3>Offline Mock Mode</h3><p><code>CROO_MOCK=true</code> — no wallet, no USDC, no WebSocket. How agents run CI.</p></div></div>
+      <div class="feat reveal"><div class="feat-ic">💼</div><div><h3>Dynamic Payouts</h3><p>Redirects incoming fee revenue to custom wallet destinations per agent.</p></div></div>
     </div>
   </section>
 
-  <section>
-    <p class="eyebrow">Two Sides, One Import</p>
-    <h2>Provider and requester in a few lines</h2>
-    <div class="code reveal"><span class="k">import</span> { makeClient, runProvider, hire, isMockMode } <span class="k">from</span> <span class="s">'@edycutjong/croo-core'</span>;
+  <section id="sdk">
+    <p class="eyebrow">The Exported Surface</p>
+    <h2>Two sides, one import</h2>
+    <p class="lede">Core doesn't call an SDK — it <b>is</b> the SDK. Eight exports cover both sides of every A2A trade; five agents run the provider loop, two also hire.</p>
+    <div class="sdk-grid">
+      <div class="tablewrap reveal">
+        <table>
+          <thead><tr><th>Export</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>makeClient()</code></td><td>Shared CROO client, Base Mainnet defaults; adds <code>getSharedStream()</code> / <code>disconnect()</code>.</td></tr>
+            <tr><td><code>runProvider()</code></td><td>Provider loop — subscribes, matches services, works, delivers.</td></tr>
+            <tr><td><code>hire()</code></td><td>Requester side — orders another agent, awaits delivery (A2A).</td></tr>
+            <tr><td><code>isMockMode()</code></td><td>Reports <code>CROO_MOCK=true</code> for offline branching.</td></tr>
+            <tr><td><code>resetMockState()</code></td><td>Test helper — clears the in-memory mock ledger.</td></tr>
+            <tr><td><code>EventType</code> · <code>DeliverableType</code></td><td>Stream-event routing and deliverable typing.</td></tr>
+            <tr><td><code>DEFAULT_CONFIG</code></td><td>Base Mainnet <code>baseURL</code> / <code>wsURL</code> / <code>rpcURL</code> shared by every agent.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="codeblock reveal">
+          <div class="code-head"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>any-agent.ts</div>
+          <pre><code><span class="c-kw">import</span> { makeClient, runProvider, hire }
+  <span class="c-kw">from</span> <span class="c-str">'@edycutjong/croo-core'</span>;
 
-<span class="c">// Provider side (Summon, Litmus, Gauntlet, Goldilocks, Maestro):</span>
-<span class="k">const</span> client = <span class="f">makeClient</span>(process.env.CROO_SDK_KEY!);
-<span class="k">await</span> <span class="f">runProvider</span>(client, { serviceMatch, work, slaGuardMs: <span class="f">60_000</span> });
+<span class="c-cm">// Provider side (5 agents run this loop):</span>
+<span class="c-kw">const</span> client = <span class="c-fn">makeClient</span>(process.env.<span class="c-fn">CROO_SDK_KEY</span>!);
+<span class="c-kw">await</span> <span class="c-fn">runProvider</span>(client, {
+  serviceMatch, work, slaGuardMs: <span class="c-kw">60_000</span>,
+});
 
-<span class="c">// Requester side (Maestro, Gauntlet) — A2A hire, settled in USDC:</span>
-<span class="k">const</span> { delivery } = <span class="k">await</span> <span class="f">hire</span>(client, { serviceId, requirement, maxPrice: <span class="f">1.0</span> });</div>
-    <div class="install"><span class="p">$</span> npm i @edycutjong/croo-core</div>
-  </section>
-
-  <section>
-    <p class="eyebrow">Exported SDK Surface</p>
-    <h2>The whole API</h2>
-    <div class="surface-wrap reveal">
-      <table class="surface">
-        <tr><th>Export</th><th>Kind</th><th>Purpose</th></tr>
-        <tr><td><code>makeClient()</code></td><td class="pp">fn</td><td class="pp">Instantiates the shared CROO client with Base Mainnet defaults; augments it with <code>getSharedStream()</code> / <code>disconnect()</code>.</td></tr>
-        <tr><td><code>runProvider()</code></td><td class="pp">fn</td><td class="pp">Provider loop — subscribes to order/negotiation events, matches services, does the work, delivers.</td></tr>
-        <tr><td><code>hire()</code></td><td class="pp">fn</td><td class="pp">Requester side — places an order against another agent and awaits delivery (A2A).</td></tr>
-        <tr><td><code>isMockMode()</code></td><td class="pp">fn</td><td class="pp">Reports <code>CROO_MOCK=true</code> so consumers branch to offline execution.</td></tr>
-        <tr><td><code>resetMockState()</code></td><td class="pp">fn</td><td class="pp">Test helper — clears the in-memory mock ledger between runs.</td></tr>
-        <tr><td><code>EventType</code> · <code>DeliverableType</code></td><td class="pp">enum</td><td class="pp">Event kinds for routing stream events, and deliverable typing.</td></tr>
-        <tr><td><code>DEFAULT_CONFIG</code></td><td class="pp">const</td><td class="pp">Base Mainnet <code>baseURL</code> / <code>wsURL</code> / <code>rpcURL</code> shared by every agent.</td></tr>
-      </table>
+<span class="c-cm">// Requester side (Maestro, Gauntlet) — A2A:</span>
+<span class="c-kw">const</span> { delivery } = <span class="c-kw">await</span> <span class="c-fn">hire</span>(client, {
+  serviceId, requirement, maxPrice: <span class="c-kw">1.0</span>,
+});</code></pre>
+        </div>
+        <div class="install reveal"><span class="p">$</span>npm i @edycutjong/croo-core</div>
+      </div>
     </div>
-    <p class="verify" style="margin-top:14px">Wraps <span class="mono">@croo-network/sdk</span> methods <span class="mono">getNegotiation</span>, <span class="mono">getDownloadURL</span>, <span class="mono">uploadFile</span>, <span class="mono">rejectOrder</span> behind one config.</p>
   </section>
 
   <section id="proof">
-    <div class="proof-head">
-      <p class="eyebrow" style="margin:0">⛓ Verifiable On-Chain</p>
-    </div>
-    <h2>Core places no orders of its own — it's the code path every settlement runs through</h2>
-    <p class="verify">Below are real CAP orders executed via core's <b class="mono" style="color:var(--accent)">hire()</b> / <b class="mono" style="color:var(--accent)">runProvider()</b>, settled in USDC on Base. Click <b class="mono" style="color:var(--accent)">pay ↗</b> / <b class="mono" style="color:var(--accent)">deliver ↗</b> to verify on BaseScan.</p>
+    <p class="eyebrow">⛓ Verifiable On-Chain</p>
+    <h2>Every settlement in the Constellation ran through this code</h2>
+    <p class="lede">Core places no orders of its own — it's the code path. <b>9 real CAP orders · 18 settlement transactions · $1.80 USDC</b>, aggregated from every agent's run log, each executed via <b class="mono">hire()</b> / <b class="mono">runProvider()</b> on Base Mainnet. Click any tx ↗ to verify on BaseScan.</p>
+
     <div class="orders">
-      <div class="order flag reveal">
+      <div class="order reveal">
         <div class="order-top">
           <span class="order-id">98d0adae</span>
-          <span class="order-usdc">0.35 USDC · 5 sub-orders</span>
+          <span class="order-usdc">1.00 USDC · 5 sub-orders</span>
         </div>
         <div class="order-cp">Navigator → Maestro · full multi-agent orchestration</div>
-        <div class="order-res">Worker research → Litmus grade 69 → fallback re-research → Litmus 76 → Summon human approval → delivered PDF. Every hop settled through core.</div>
+        <div class="order-res">Worker research → Litmus grade 69 → fallback re-research → Litmus 76 → Summon human approval → delivered PDF. Every hop below settled through core.</div>
         <div class="order-links">
-          <a href="https://basescan.org/tx/0xdb9dc068a95b8da9367229259ff49756f8007cb9795208ca84b1fafa8e17e538" target="_blank" rel="noopener" title="0xdb9dc068a95b8da9367229259ff49756f8007cb9795208ca84b1fafa8e17e538">pay <span>0xdb9dc0…8e17e538</span> ↗</a>
-          <a href="https://basescan.org/tx/0x65a29703ab2af544302352088d26f2fc46c507a985ed94bfad0569f01c4f7eed" target="_blank" rel="noopener" title="0x65a29703ab2af544302352088d26f2fc46c507a985ed94bfad0569f01c4f7eed">deliver <span>0x65a297…f01c4f7eed</span> ↗</a>
+          <a href="https://basescan.org/tx/0xdb9dc068a95b8da9367229259ff49756f8007cb9795208ca84b1fafa8e17e538" target="_blank" rel="noopener" title="0xdb9dc068a95b8da9367229259ff49756f8007cb9795208ca84b1fafa8e17e538">pay <span>0xdb9dc0…17e538</span> ↗</a>
+          <a href="https://basescan.org/tx/0x65a29703ab2af544302352088d26f2fc46c507a985ed94bfad0569f01c4f7eed" target="_blank" rel="noopener" title="0x65a29703ab2af544302352088d26f2fc46c507a985ed94bfad0569f01c4f7eed">deliver <span>0x65a297…4f7eed</span> ↗</a>
         </div>
       </div>
-      <div class="order reveal">
-        <div class="order-top">
-          <span class="order-id">82878d87</span>
-          <span class="order-usdc">0.10 USDC</span>
-        </div>
-        <div class="order-cp">Maestro → Worker · research</div>
-        <div class="order-res">Sourced research draft, hired via hire().</div>
-        <div class="order-links">
-          <a href="https://basescan.org/tx/0x3027fb543d75ba8ed11345c28e4cdeebcf1d9e8a00ca55b62c78437e1489c073" target="_blank" rel="noopener" title="0x3027fb543d75ba8ed11345c28e4cdeebcf1d9e8a00ca55b62c78437e1489c073">pay <span>0x3027fb…89c073</span> ↗</a>
-          <a href="https://basescan.org/tx/0xd524336641fca544bd791bdbcdfd13500129efd1b8e93028446aff749aef2346" target="_blank" rel="noopener" title="0xd524336641fca544bd791bdbcdfd13500129efd1b8e93028446aff749aef2346">deliver <span>0xd52433…ef2346</span> ↗</a>
-        </div>
-      </div>
-      <div class="order reveal">
-        <div class="order-top">
-          <span class="order-id">2b7a8c3b</span>
-          <span class="order-usdc">0.10 USDC</span>
-        </div>
-        <div class="order-cp">Gauntlet → Worker · A2A</div>
-        <div class="order-res">Direct agent-to-agent hire, settled + delivered.</div>
-        <div class="order-links">
-          <a href="https://basescan.org/tx/0x5836c9133180886a20a77b1637c35b0b99683acc672f9656a3958449086a347c" target="_blank" rel="noopener" title="0x5836c9133180886a20a77b1637c35b0b99683acc672f9656a3958449086a347c">pay <span>0x5836c9…6a347c</span> ↗</a>
-          <a href="https://basescan.org/tx/0xed8a1a803b264b206ce61a1072e157f5fa148eed86b668da2c433043dd3ebd92" target="_blank" rel="noopener" title="0xed8a1a803b264b206ce61a1072e157f5fa148eed86b668da2c433043dd3ebd92">deliver <span>0xed8a1a…3ebd92</span> ↗</a>
-        </div>
-      </div>
+    </div>
+
+    <div class="tablewrap reveal">
+      <table class="ledger">
+        <thead><tr><th>#</th><th>Route</th><th>Order</th><th>USDC</th><th>Base Mainnet</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="route">Navigator → Maestro</td><td class="oid">98d0adae</td><td class="usdc">1.00</td><td>
+            <a href="https://basescan.org/tx/0xdb9dc068a95b8da9367229259ff49756f8007cb9795208ca84b1fafa8e17e538" target="_blank" rel="noopener">pay ↗</a><a href="https://basescan.org/tx/0x65a29703ab2af544302352088d26f2fc46c507a985ed94bfad0569f01c4f7eed" target="_blank" rel="noopener">deliver ↗</a></td></tr>
+          <tr><td>2</td><td class="route">Maestro → Worker</td><td class="oid">82878d87</td><td class="usdc">0.10</td><td>
+            <a href="https://basescan.org/tx/0x3027fb543d75ba8ed11345c28e4cdeebcf1d9e8a00ca55b62c78437e1489c073" target="_blank" rel="noopener">pay ↗</a><a href="https://basescan.org/tx/0xd524336641fca544bd791bdbcdfd13500129efd1b8e93028446aff749aef2346" target="_blank" rel="noopener">deliver ↗</a></td></tr>
+          <tr><td>3</td><td class="route">Maestro → Litmus</td><td class="oid">9da4458a</td><td class="usdc">0.05</td><td>
+            <a href="https://basescan.org/tx/0x920d1265b48f2d7552c15b4b0c9bec983244a86c69fad152911fb3827a1b401a" target="_blank" rel="noopener">pay ↗</a><a href="https://basescan.org/tx/0x0fe4027fbd04978498bf3ece48008735948957c5255aaf457c8d321b8ae56835" target="_blank" rel="noopener">deliver ↗</a></td></tr>
+          <tr><td>4</td><td class="route">Maestro → Worker (fallback)</td><td class="oid">9087342c</td><td class="usdc">0.10</td><td>
+            <a href="https://basescan.org/tx/0x65c258c1db5058b8f13716483229508b3b284f835b9e3810a7f8a550fa0353bc" target="_blank" rel="noopener">pay ↗</a><a href="https://basescan.org/tx/0x0c3b5afe082bfc0a78da9268aad81f71d69ec0b38313769fef9476f5705a9033" target="_blank" rel="noopener">deliver ↗</a></td></tr>
+          <tr><td>5</td><td class="route">Maestro → Litmus (re-grade)</td><td class="oid">3f72221e</td><td class="usdc">0.05</td><td>
+            <a href="https://basescan.org/tx/0xfc1099b5e9b589097c799219a129afcd4154eac453caab2c0731704d8048b3a1" target="_blank" rel="noopener">pay ↗</a><a href="https://basescan.org/tx/0x51d38da2a6ef96d82ff875c2b129f03670d196ed28b50f7f8fb6ee0d84a184bc" target="_blank" rel="noopener">deliver ↗</a></td></tr>
+          <tr><td>6</td><td class="route">Maestro → Summon</td><td class="oid">9dc01628</td><td class="usdc">0.05</td><td>
+            <a href="https://basescan.org/tx/0xc06282c5979ce93c24ac08ea1079c183da5572ce8171049f7d1d43a402f67861" target="_blank" rel="noopener">pay ↗</a><a href="https://basescan.org/tx/0x1a345f4b6ed1a7346ce99fc773f5cc33e6b3259d5bb753771286d81dbd43ee83" target="_blank" rel="noopener">deliver ↗</a></td></tr>
+          <tr><td>7</td><td class="route">Navigator → Gauntlet</td><td class="oid">725c33bd</td><td class="usdc">0.25</td><td>
+            <a href="https://basescan.org/tx/0xa5420c857b343655b6437ff93d20205efbebc80adb77475fdf5e6a8b3702e1ef" target="_blank" rel="noopener">pay ↗</a><a href="https://basescan.org/tx/0x0ef49cef3e76a72099e46b8f50bb45a08fac6f63400b7486417b1e1bda5ae4fe" target="_blank" rel="noopener">deliver ↗</a></td></tr>
+          <tr><td>8</td><td class="route">Gauntlet → Worker (probe)</td><td class="oid">2b7a8c3b</td><td class="usdc">0.10</td><td>
+            <a href="https://basescan.org/tx/0x5836c9133180886a20a77b1637c35b0b99683acc672f9656a3958449086a347c" target="_blank" rel="noopener">pay ↗</a><a href="https://basescan.org/tx/0xed8a1a803b264b206ce61a1072e157f5fa148eed86b668da2c433043dd3ebd92" target="_blank" rel="noopener">deliver ↗</a></td></tr>
+          <tr><td>9</td><td class="route">Navigator → Goldilocks</td><td class="oid">16991619</td><td class="usdc">0.10</td><td>
+            <a href="https://basescan.org/tx/0x306ff403395d82c046f1e1a2575616bcbf85c79eb45e3b4cf600d0d3045e6811" target="_blank" rel="noopener">pay ↗</a><a href="https://basescan.org/tx/0xfa53c0d5574dda0497323ed06b7b9699db51c55a3a807b8c0b14dfd8f014638a" target="_blank" rel="noopener">deliver ↗</a></td></tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
-  <section>
+  <section id="network">
     <p class="eyebrow">The Constellation</p>
     <h2>One SDK, six agents</h2>
     <div class="constel-wrap reveal">
@@ -332,6 +374,7 @@
 (function(){
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // Scroll reveal
   var rev = document.querySelectorAll(".reveal");
   if("IntersectionObserver" in window && !reduce){
     var io = new IntersectionObserver(function(es){
@@ -340,6 +383,7 @@
     rev.forEach(function(el){ io.observe(el); });
   } else { rev.forEach(function(el){ el.classList.add("in"); }); }
 
+  // Count-up stats
   function countUp(el){
     var to=parseFloat(el.dataset.to), dec=parseInt(el.dataset.dec||"0",10),
         pre=el.dataset.prefix||"", suf=el.dataset.suffix||"", t0=null, dur=1100;
@@ -354,6 +398,7 @@
     vs.forEach(function(el){ io2.observe(el); });
   } else { vs.forEach(countUp); }
 
+  // Constellation starfield background
   var cv=document.getElementById("stars");
   if(cv && !reduce){
     var ctx=cv.getContext("2d"), W,H,DPR=Math.min(window.devicePixelRatio||1,2), nodes=[], accent=getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()||"#6366F1";
@@ -374,3 +419,5 @@
   }
 })();
 </script>
+</body>
+</html>
