@@ -1,3 +1,10 @@
+## [0.5.2](https://github.com/edycutjong/croo-core/compare/v0.5.1...v0.5.2) (2026-08-22)
+
+
+### Bug Fixes
+
+* **deps:** resolve 1 dependency vulnerabilities via lockfile ([7950322](https://github.com/edycutjong/croo-core/commit/7950322e7edb7d0035ebc2f253460a8641e15e00))
+
 ## [0.5.1](https://github.com/edycutjong/croo-core/compare/v0.5.0...v0.5.1) (2026-07-08)
 
 
